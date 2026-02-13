@@ -262,10 +262,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
   // NAV Chart: daily NAV values
   const navData = dailySnapshots.map((s) => ({
     date: s.date,
-    nav: Math.round(s.nav * 100) / 100,
-    navAfterPayout: s.navAfterPayout
-      ? Math.round(s.navAfterPayout * 100) / 100
-      : undefined,
+    nav: Math.round((s.navAfterPayout ?? s.nav) * 100) / 100,
   }));
 
   // Repayment Chart: cumulative repaid amount over time

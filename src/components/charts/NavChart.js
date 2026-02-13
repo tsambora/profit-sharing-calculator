@@ -137,15 +137,6 @@ export default function NavChart({ data }) {
             strokeWidth={1.5}
             animationDuration={300}
           />
-          <Line
-            type="monotone"
-            dataKey="navAfterPayout"
-            stroke="#dc2626"
-            name="NAV After Payout"
-            dot={{ r: 3 }}
-            strokeWidth={0}
-            connectNulls={false}
-          />
           {selecting && refLeft && refRight && (
             <ReferenceArea
               x1={refLeft}
