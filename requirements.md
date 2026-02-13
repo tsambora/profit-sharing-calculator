@@ -185,3 +185,18 @@ NAV after payout day:
 - When a loan is written off, the borrower ID is recorded.
 - From the day after the write-off date, that borrower no longer contributes repayments to the fund.
 - This reduces the total repayment inflow proportionally to the number of written-off borrowers.
+
+### 17. Prevent duplicate write-offs for the same borrower
+
+**Acceptance Criteria:**
+
+- A borrower can only be written off once.
+- Bulk write-off creation only picks from borrowers that have not already been written off.
+- Single write-off creation blocks adding a borrower ID that is already in the write-off table.
+
+### 18. NAV after payout uses adjusted AUM directly
+
+**Acceptance Criteria:**
+
+- Write-off absorption reduces the repayment pools via the waterfall, and any unabsorbed amount reduces AUM directly.
+- NAV after payout is calculated as `total fund AUM / total number of units` since AUM is already correctly adjusted. No additional write-off subtraction is applied to avoid double-counting.
