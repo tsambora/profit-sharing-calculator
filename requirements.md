@@ -170,13 +170,14 @@ NAV after payout day:
 - Simulation results are not persisted (they are recomputed on demand).
 - Item IDs are restored correctly after rehydration to avoid duplicates.
 
-### 15. Gradual NAV recovery after write-off losses
+### 15. Write-offs are permanent losses
 
 **Acceptance Criteria:**
 
-- When a write-off causes AUM to drop (unabsorbed loss), the deficit is tracked.
-- Each subsequent month, the lender principal pool from repayments is used to recover the deficit, gradually rebuilding AUM.
-- Once the deficit is fully recovered, principal stops adding to AUM and NAV returns to normal levels.
+- When a write-off causes AUM to drop (unabsorbed loss after the waterfall), the loss is permanent.
+- AUM is reduced by the unabsorbed amount and stays at the lower level.
+- Lender principal repayments are not used to recover the deficit — they were already counted in AUM as outstanding loans, so using them would be double-counting.
+- NAV reflects the permanently reduced AUM going forward.
 
 ### 16. Written-off borrowers stop making repayments (180-day backdate)
 
@@ -201,3 +202,16 @@ NAV after payout day:
 
 - Write-off absorption reduces the repayment pools via the waterfall, and any unabsorbed amount reduces AUM directly.
 - NAV after payout is calculated as `total fund AUM / total number of units` since AUM is already correctly adjusted. No additional write-off subtraction is applied to avoid double-counting.
+
+### 19. Unique borrower IDs across multiple bulk creations
+
+**Acceptance Criteria:**
+
+- When bulk-creating borrowers, the auto-generated IDs (B-001, B-002, ...) continue numbering from the highest existing B-### ID rather than always starting from B-001.
+- This prevents ID collisions when users create multiple batches of borrowers.
+
+### 20. Accessible date picker labels
+
+**Acceptance Criteria:**
+
+- All date picker inputs across the application (investment, borrower, write-off forms) have visible labels associated with them for accessibility.
