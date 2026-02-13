@@ -43,7 +43,9 @@ User can input, edit, and delete multiple borrower repayment schedules with belo
 
 1. Borrower ID
 2. Repayment schedule: weekly / daily
-3. Repayment amount
+3. Repayment start date
+4. Repayment amount
+5. How many borrowers? (This is used to create multiple borrower at once. If users fill this in, borrower IDs will be automatically filled.)
 
 ### 3. Accept user input for loan write off schedule and the outstanding amount of the written off loans
 
