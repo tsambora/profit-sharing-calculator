@@ -90,8 +90,6 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
   let totalAum = 0;
   let totalRepaid = 0;
   let totalInvested = 0;
-  let writeOffDeficit = 0; // tracks AUM lost to write-offs, recovered by principal repayments
-
   // Lender state: { lenderId -> { units, totalInvested, totalPayout, totalPrincipalReturned } }
   const lenderState = {};
 
@@ -204,18 +202,10 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
         writeOffResult = absorbWriteOff(monthlyPools, monthlyWriteOffAmount);
         monthlyPools = writeOffResult.pools;
 
-        // Adjust AUM for unabsorbed principal loss
+        // Adjust AUM for unabsorbed principal loss (permanent)
         if (writeOffResult.unabsorbed > 0) {
           totalAum -= writeOffResult.unabsorbed;
-          writeOffDeficit += writeOffResult.unabsorbed;
         }
-      }
-
-      // Use lender principal to recover AUM lost to write-offs
-      if (writeOffDeficit > 0 && monthlyPools.lenderPrincipal > 0) {
-        const recovery = Math.min(monthlyPools.lenderPrincipal, writeOffDeficit);
-        totalAum += recovery;
-        writeOffDeficit -= recovery;
       }
 
       // Calculate lender payouts
