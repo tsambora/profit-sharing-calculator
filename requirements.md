@@ -178,13 +178,14 @@ NAV after payout day:
 - Each subsequent month, the lender principal pool from repayments is used to recover the deficit, gradually rebuilding AUM.
 - Once the deficit is fully recovered, principal stops adding to AUM and NAV returns to normal levels.
 
-### 16. Written-off borrowers stop making repayments
+### 16. Written-off borrowers stop making repayments (180-day backdate)
 
 **Acceptance Criteria:**
 
-- When a loan is written off, the borrower ID is recorded.
-- From the day after the write-off date, that borrower no longer contributes repayments to the fund.
-- This reduces the total repayment inflow proportionally to the number of written-off borrowers.
+- A loan is written off after the borrower has not made any repayment for 180 days. Therefore, when a write-off is declared, the borrower actually stopped paying 180 days before the write-off date.
+- At simulation start, each write-off's "stop date" is pre-computed as `write-off date - 180 days`.
+- From the stop date onward, that borrower no longer contributes repayments to the fund.
+- This reduces the total repayment inflow and accurately reflects the period of non-payment leading up to the write-off.
 
 ### 17. Prevent duplicate write-offs for the same borrower
 
