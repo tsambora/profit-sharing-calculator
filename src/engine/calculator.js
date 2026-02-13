@@ -106,8 +106,13 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
   // Monthly accumulated write-off amount
   let monthlyWriteOffAmount = 0;
 
-  // Track written-off borrower IDs so they stop making repayments
-  const writtenOffBorrowerIds = new Set();
+  // Pre-compute the date each borrower stopped paying (write-off date - 180 days)
+  // A loan is written off after 180 days of non-payment, so repayments stop 180 days before
+  const borrowerStopDate = {};
+  for (const wo of writeOffs) {
+    const stopDate = addDays(new Date(wo.writeOffDate), -180);
+    borrowerStopDate[wo.borrowerId] = formatDate(stopDate);
+  }
 
   // Output time series
   const dailySnapshots = [];
@@ -146,10 +151,10 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
       }
     }
 
-    // 2. Process borrower repayments for today (skip written-off borrowers)
+    // 2. Process borrower repayments for today (skip borrowers past their stop date)
     let todayRepaymentTotal = 0;
     for (const b of borrowers) {
-      if (writtenOffBorrowerIds.has(b.borrowerId)) continue;
+      if (borrowerStopDate[b.borrowerId] && dateStr >= borrowerStopDate[b.borrowerId]) continue;
       const schedule = repaymentSchedule[b.id] || [];
       if (schedule.includes(dateStr)) {
         const dist = distributeRepayment(b.amount);
@@ -166,7 +171,6 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
     const todayWriteOffs = writeOffsByDate[dateStr] || [];
     for (const wo of todayWriteOffs) {
       monthlyWriteOffAmount += wo.outstandingAmount;
-      writtenOffBorrowerIds.add(wo.borrowerId);
     }
 
     // 4. End of day: recalculate NAV
