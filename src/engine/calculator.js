@@ -242,8 +242,8 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
         poolsAfterAbsorption: { ...monthlyPools },
       });
 
-      // Recalculate NAV after payout (margin pool emptied)
-      nav = calculateNavAfterPayout(totalAum, totalUnits, monthlyWriteOffAmount, monthlyPools.lenderMargin);
+      // Recalculate NAV after payout (margin pool emptied, AUM already adjusted)
+      nav = totalUnits > 0 ? totalAum / totalUnits : INITIAL_NAV;
 
       // Update the last daily snapshot with post-payout NAV
       if (dailySnapshots.length > 0) {
