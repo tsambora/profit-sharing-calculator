@@ -56,6 +56,7 @@ User can input, edit, and delete multiple write off of loans in the fund with be
 1. Borrower ID
 2. Write off date
 3. Outstanding amount of the loan
+4. How many borrowers? (This is used to create multiple write-offs at once. Borrower IDs will be randomly picked from the existing borrower list.)
 
 ### 4. Allow user to start generating graphs and refresh graphs based on all input
 
@@ -143,4 +144,44 @@ NAV after payout day:
 **Acceptance Criteria:**
 
 - The graph will have 2 axes: time and NAV.
-- The graph should show the daily movement of the NAV and the movement of the NAV during payout day throughout the year.
+- The graph shows a single continuous line where the NAV on payout days reflects the post-payout value (no separate scatter points).
+
+### 12. Bulk creation for borrowers and write-offs
+
+**Acceptance Criteria:**
+
+- Borrower form has a "How many borrowers?" field. When filled with a number > 1, it creates that many borrowers with auto-generated IDs (B-001, B-002, ...) sharing the same schedule, start date, and amount.
+- Write-off form has a "How many borrowers?" field. When filled with a number > 1, it randomly picks that many borrower IDs from the existing borrower list and creates write-offs for each.
+- The "How many borrowers?" field is hidden when editing an existing record.
+- The Borrower ID input is disabled when bulk mode is active.
+
+### 13. Delete all functionality for borrowers and write-offs
+
+**Acceptance Criteria:**
+
+- Both the borrower and write-off tables have a "Delete All" button visible when there are items in the table.
+- Clicking "Delete All" removes all records from the respective table.
+
+### 14. Data persistence across page refreshes
+
+**Acceptance Criteria:**
+
+- All input data (investments, borrowers, write-offs) and tab state are persisted to localStorage.
+- Simulation results are not persisted (they are recomputed on demand).
+- Item IDs are restored correctly after rehydration to avoid duplicates.
+
+### 15. Gradual NAV recovery after write-off losses
+
+**Acceptance Criteria:**
+
+- When a write-off causes AUM to drop (unabsorbed loss), the deficit is tracked.
+- Each subsequent month, the lender principal pool from repayments is used to recover the deficit, gradually rebuilding AUM.
+- Once the deficit is fully recovered, principal stops adding to AUM and NAV returns to normal levels.
+
+### 16. Written-off borrowers stop making repayments
+
+**Acceptance Criteria:**
+
+- When a loan is written off, the borrower ID is recorded.
+- From the day after the write-off date, that borrower no longer contributes repayments to the fund.
+- This reduces the total repayment inflow proportionally to the number of written-off borrowers.
