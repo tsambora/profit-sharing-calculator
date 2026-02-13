@@ -7,22 +7,44 @@ export default function WriteOffTable() {
   const { tabs, activeTabId, addWriteOff, updateWriteOff, removeWriteOff } =
     useSimulationStore();
   const writeOffs = tabs[activeTabId]?.writeOffs || [];
+  const borrowers = tabs[activeTabId]?.borrowers || [];
 
   const [form, setForm] = useState({
     borrowerId: "",
     writeOffDate: "",
     outstandingAmount: "",
+    count: "",
   });
   const [editingId, setEditingId] = useState(null);
 
   const handleAdd = () => {
-    if (!form.borrowerId || !form.writeOffDate || !form.outstandingAmount) return;
-    addWriteOff({
-      borrowerId: form.borrowerId,
-      writeOffDate: form.writeOffDate,
-      outstandingAmount: Number(form.outstandingAmount),
-    });
-    setForm({ borrowerId: "", writeOffDate: "", outstandingAmount: "" });
+    const count = Number(form.count) || 1;
+
+    if (count > 1) {
+      if (!form.writeOffDate || !form.outstandingAmount) return;
+      if (borrowers.length === 0) return;
+
+      // Shuffle borrower list and pick `count` random IDs
+      const shuffled = [...borrowers].sort(() => Math.random() - 0.5);
+      const picked = shuffled.slice(0, Math.min(count, shuffled.length));
+
+      for (const b of picked) {
+        addWriteOff({
+          borrowerId: b.borrowerId,
+          writeOffDate: form.writeOffDate,
+          outstandingAmount: Number(form.outstandingAmount),
+        });
+      }
+    } else {
+      if (!form.borrowerId || !form.writeOffDate || !form.outstandingAmount) return;
+      addWriteOff({
+        borrowerId: form.borrowerId,
+        writeOffDate: form.writeOffDate,
+        outstandingAmount: Number(form.outstandingAmount),
+      });
+    }
+
+    setForm({ borrowerId: "", writeOffDate: "", outstandingAmount: "", count: "" });
   };
 
   const handleUpdate = () => {
@@ -33,7 +55,7 @@ export default function WriteOffTable() {
       outstandingAmount: Number(form.outstandingAmount),
     });
     setEditingId(null);
-    setForm({ borrowerId: "", writeOffDate: "", outstandingAmount: "" });
+    setForm({ borrowerId: "", writeOffDate: "", outstandingAmount: "", count: "" });
   };
 
   const startEdit = (wo) => {
@@ -42,24 +64,28 @@ export default function WriteOffTable() {
       borrowerId: wo.borrowerId,
       writeOffDate: wo.writeOffDate,
       outstandingAmount: String(wo.outstandingAmount),
+      count: "",
     });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ borrowerId: "", writeOffDate: "", outstandingAmount: "" });
+    setForm({ borrowerId: "", writeOffDate: "", outstandingAmount: "", count: "" });
   };
+
+  const bulkMode = !editingId && Number(form.count) > 1;
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
       <h3 className="text-lg font-semibold mb-3">Loan Write-Offs</h3>
 
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-5 gap-2 mb-3">
         <input
           type="text"
           placeholder="Borrower ID"
           className="border rounded px-2 py-1 text-sm"
-          value={form.borrowerId}
+          value={bulkMode ? "" : form.borrowerId}
+          disabled={bulkMode}
           onChange={(e) => setForm({ ...form, borrowerId: e.target.value })}
         />
         <input
@@ -77,6 +103,16 @@ export default function WriteOffTable() {
             setForm({ ...form, outstandingAmount: e.target.value })
           }
         />
+        {!editingId && (
+          <input
+            type="number"
+            placeholder="How many borrowers?"
+            className="border rounded px-2 py-1 text-sm"
+            min="1"
+            value={form.count}
+            onChange={(e) => setForm({ ...form, count: e.target.value })}
+          />
+        )}
         <div className="flex gap-1">
           {editingId ? (
             <>
