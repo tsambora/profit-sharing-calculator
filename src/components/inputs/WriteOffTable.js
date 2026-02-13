@@ -104,12 +104,15 @@ export default function WriteOffTable() {
           disabled={bulkMode}
           onChange={(e) => setForm({ ...form, borrowerId: e.target.value })}
         />
-        <input
-          type="date"
-          className="border rounded px-2 py-1 text-sm"
-          value={form.writeOffDate}
-          onChange={(e) => setForm({ ...form, writeOffDate: e.target.value })}
-        />
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Write-Off Date</label>
+          <input
+            type="date"
+            className="border rounded px-2 py-1 text-sm w-full"
+            value={form.writeOffDate}
+            onChange={(e) => setForm({ ...form, writeOffDate: e.target.value })}
+          />
+        </div>
         <input
           type="number"
           placeholder="Outstanding Amount"

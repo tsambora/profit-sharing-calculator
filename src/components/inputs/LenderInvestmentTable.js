@@ -74,12 +74,15 @@ export default function LenderInvestmentTable() {
           <option value="topup">Investment (Top-up)</option>
           <option value="withdraw">Divestment (Withdraw)</option>
         </select>
-        <input
-          type="date"
-          className="border rounded px-2 py-1 text-sm"
-          value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
-        />
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Transaction Date</label>
+          <input
+            type="date"
+            className="border rounded px-2 py-1 text-sm w-full"
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
+          />
+        </div>
         <input
           type="number"
           placeholder="Amount"

@@ -111,13 +111,15 @@ export default function BorrowerRepaymentTable() {
           <option value="weekly">Weekly</option>
           <option value="daily">Daily</option>
         </select>
-        <input
-          type="date"
-          placeholder="Start Date"
-          className="border rounded px-2 py-1 text-sm"
-          value={form.startDate}
-          onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-        />
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Repayment Start Date</label>
+          <input
+            type="date"
+            className="border rounded px-2 py-1 text-sm w-full"
+            value={form.startDate}
+            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+          />
+        </div>
         <input
           type="number"
           placeholder="Repayment Amount"
