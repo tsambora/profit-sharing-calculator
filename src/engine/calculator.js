@@ -106,6 +106,9 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
   // Monthly accumulated write-off amount
   let monthlyWriteOffAmount = 0;
 
+  // Track written-off borrower IDs so they stop making repayments
+  const writtenOffBorrowerIds = new Set();
+
   // Output time series
   const dailySnapshots = [];
   const monthlyPayouts = [];
@@ -143,9 +146,10 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
       }
     }
 
-    // 2. Process borrower repayments for today
+    // 2. Process borrower repayments for today (skip written-off borrowers)
     let todayRepaymentTotal = 0;
     for (const b of borrowers) {
+      if (writtenOffBorrowerIds.has(b.borrowerId)) continue;
       const schedule = repaymentSchedule[b.id] || [];
       if (schedule.includes(dateStr)) {
         const dist = distributeRepayment(b.amount);
@@ -162,6 +166,7 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
     const todayWriteOffs = writeOffsByDate[dateStr] || [];
     for (const wo of todayWriteOffs) {
       monthlyWriteOffAmount += wo.outstandingAmount;
+      writtenOffBorrowerIds.add(wo.borrowerId);
     }
 
     // 4. End of day: recalculate NAV
