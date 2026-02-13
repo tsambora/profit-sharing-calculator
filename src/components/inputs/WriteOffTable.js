@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSimulationStore from "@/store/simulationStore";
 
 export default function WriteOffTable() {
-  const { tabs, activeTabId, addWriteOff, updateWriteOff, removeWriteOff } =
+  const { tabs, activeTabId, addWriteOff, updateWriteOff, removeWriteOff, clearWriteOffs } =
     useSimulationStore();
   const writeOffs = tabs[activeTabId]?.writeOffs || [];
   const borrowers = tabs[activeTabId]?.borrowers || [];
@@ -77,7 +77,17 @@ export default function WriteOffTable() {
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <h3 className="text-lg font-semibold mb-3">Loan Write-Offs</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold">Loan Write-Offs</h3>
+        {writeOffs.length > 0 && (
+          <button
+            onClick={clearWriteOffs}
+            className="text-red-600 hover:text-red-800 text-xs"
+          >
+            Delete All
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-5 gap-2 mb-3">
         <input

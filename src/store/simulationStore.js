@@ -149,6 +149,17 @@ const useSimulationStore = create(
         });
       },
 
+      clearBorrowers: () => {
+        const state = get();
+        const tab = state.tabs[state.activeTabId];
+        set({
+          tabs: {
+            ...state.tabs,
+            [state.activeTabId]: { ...tab, borrowers: [], results: null },
+          },
+        });
+      },
+
       // Write-off actions
       addWriteOff: (writeOff) => {
         const state = get();
@@ -193,6 +204,17 @@ const useSimulationStore = create(
               writeOffs: tab.writeOffs.filter((wo) => wo.id !== id),
               results: null,
             },
+          },
+        });
+      },
+
+      clearWriteOffs: () => {
+        const state = get();
+        const tab = state.tabs[state.activeTabId];
+        set({
+          tabs: {
+            ...state.tabs,
+            [state.activeTabId]: { ...tab, writeOffs: [], results: null },
           },
         });
       },

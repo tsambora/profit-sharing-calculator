@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSimulationStore from "@/store/simulationStore";
 
 export default function BorrowerRepaymentTable() {
-  const { tabs, activeTabId, addBorrower, updateBorrower, removeBorrower } =
+  const { tabs, activeTabId, addBorrower, updateBorrower, removeBorrower, clearBorrowers } =
     useSimulationStore();
   const borrowers = tabs[activeTabId]?.borrowers || [];
 
@@ -76,7 +76,17 @@ export default function BorrowerRepaymentTable() {
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <h3 className="text-lg font-semibold mb-3">Borrower Repayments</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold">Borrower Repayments</h3>
+        {borrowers.length > 0 && (
+          <button
+            onClick={clearBorrowers}
+            className="text-red-600 hover:text-red-800 text-xs"
+          >
+            Delete All
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-6 gap-2 mb-3">
         <input
