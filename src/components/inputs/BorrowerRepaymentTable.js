@@ -11,29 +11,49 @@ export default function BorrowerRepaymentTable() {
   const [form, setForm] = useState({
     borrowerId: "",
     schedule: "weekly",
+    startDate: "",
     amount: "",
+    count: "",
   });
   const [editingId, setEditingId] = useState(null);
 
   const handleAdd = () => {
-    if (!form.borrowerId || !form.amount) return;
-    addBorrower({
-      borrowerId: form.borrowerId,
-      schedule: form.schedule,
-      amount: Number(form.amount),
-    });
-    setForm({ borrowerId: "", schedule: "weekly", amount: "" });
+    const count = Number(form.count) || 1;
+
+    if (count > 1) {
+      if (!form.startDate || !form.amount) return;
+      for (let i = 1; i <= count; i++) {
+        const id = `B-${String(i).padStart(3, "0")}`;
+        addBorrower({
+          borrowerId: id,
+          schedule: form.schedule,
+          startDate: form.startDate,
+          amount: Number(form.amount),
+        });
+      }
+    } else {
+      if (!form.borrowerId || !form.startDate || !form.amount) return;
+      addBorrower({
+        borrowerId: form.borrowerId,
+        schedule: form.schedule,
+        startDate: form.startDate,
+        amount: Number(form.amount),
+      });
+    }
+
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", count: "" });
   };
 
   const handleUpdate = () => {
-    if (!form.borrowerId || !form.amount) return;
+    if (!form.borrowerId || !form.startDate || !form.amount) return;
     updateBorrower(editingId, {
       borrowerId: form.borrowerId,
       schedule: form.schedule,
+      startDate: form.startDate,
       amount: Number(form.amount),
     });
     setEditingId(null);
-    setForm({ borrowerId: "", schedule: "weekly", amount: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", count: "" });
   };
 
   const startEdit = (b) => {
@@ -41,25 +61,30 @@ export default function BorrowerRepaymentTable() {
     setForm({
       borrowerId: b.borrowerId,
       schedule: b.schedule,
+      startDate: b.startDate || "",
       amount: String(b.amount),
+      count: "",
     });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ borrowerId: "", schedule: "weekly", amount: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", count: "" });
   };
+
+  const bulkMode = !editingId && Number(form.count) > 1;
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
       <h3 className="text-lg font-semibold mb-3">Borrower Repayments</h3>
 
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-6 gap-2 mb-3">
         <input
           type="text"
           placeholder="Borrower ID"
           className="border rounded px-2 py-1 text-sm"
-          value={form.borrowerId}
+          value={bulkMode ? "" : form.borrowerId}
+          disabled={bulkMode}
           onChange={(e) => setForm({ ...form, borrowerId: e.target.value })}
         />
         <select
@@ -71,12 +96,29 @@ export default function BorrowerRepaymentTable() {
           <option value="daily">Daily</option>
         </select>
         <input
+          type="date"
+          placeholder="Start Date"
+          className="border rounded px-2 py-1 text-sm"
+          value={form.startDate}
+          onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+        />
+        <input
           type="number"
           placeholder="Repayment Amount"
           className="border rounded px-2 py-1 text-sm"
           value={form.amount}
           onChange={(e) => setForm({ ...form, amount: e.target.value })}
         />
+        {!editingId && (
+          <input
+            type="number"
+            placeholder="How many borrowers?"
+            className="border rounded px-2 py-1 text-sm"
+            min="1"
+            value={form.count}
+            onChange={(e) => setForm({ ...form, count: e.target.value })}
+          />
+        )}
         <div className="flex gap-1">
           {editingId ? (
             <>
@@ -110,6 +152,7 @@ export default function BorrowerRepaymentTable() {
             <tr className="border-b bg-gray-50">
               <th className="text-left py-2 px-2">Borrower ID</th>
               <th className="text-left py-2 px-2">Schedule</th>
+              <th className="text-left py-2 px-2">Start Date</th>
               <th className="text-right py-2 px-2">Amount</th>
               <th className="text-right py-2 px-2">Actions</th>
             </tr>
@@ -123,6 +166,7 @@ export default function BorrowerRepaymentTable() {
                     {b.schedule}
                   </span>
                 </td>
+                <td className="py-2 px-2">{b.startDate}</td>
                 <td className="py-2 px-2 text-right">
                   {b.amount.toLocaleString()}
                 </td>

@@ -43,7 +43,7 @@ function buildRepaymentSchedule(borrowers, startDate, endDate) {
   const schedule = {};
   for (const b of borrowers) {
     schedule[b.id] = [];
-    let current = new Date(startDate);
+    let current = new Date(b.startDate || startDate);
     while (current <= endDate) {
       if (b.schedule === "daily" && isWeekday(current)) {
         schedule[b.id].push(formatDate(current));
