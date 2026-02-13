@@ -22,8 +22,14 @@ export default function BorrowerRepaymentTable() {
 
     if (count > 1) {
       if (!form.startDate || !form.amount) return;
+      // Find the highest existing B-### number to continue from
+      let maxNum = 0;
+      for (const b of borrowers) {
+        const match = b.borrowerId.match(/^B-(\d+)$/);
+        if (match) maxNum = Math.max(maxNum, Number(match[1]));
+      }
       for (let i = 1; i <= count; i++) {
-        const id = `B-${String(i).padStart(3, "0")}`;
+        const id = `B-${String(maxNum + i).padStart(3, "0")}`;
         addBorrower({
           borrowerId: id,
           schedule: form.schedule,
