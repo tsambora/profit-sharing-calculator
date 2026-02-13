@@ -17,15 +17,20 @@ export default function WriteOffTable() {
   });
   const [editingId, setEditingId] = useState(null);
 
+  // Borrower IDs already written off
+  const writtenOffIds = new Set(writeOffs.map((wo) => wo.borrowerId));
+
   const handleAdd = () => {
     const count = Number(form.count) || 1;
 
     if (count > 1) {
       if (!form.writeOffDate || !form.outstandingAmount) return;
-      if (borrowers.length === 0) return;
 
-      // Shuffle borrower list and pick `count` random IDs
-      const shuffled = [...borrowers].sort(() => Math.random() - 0.5);
+      // Only pick from borrowers not yet written off
+      const eligible = borrowers.filter((b) => !writtenOffIds.has(b.borrowerId));
+      if (eligible.length === 0) return;
+
+      const shuffled = [...eligible].sort(() => Math.random() - 0.5);
       const picked = shuffled.slice(0, Math.min(count, shuffled.length));
 
       for (const b of picked) {
@@ -37,6 +42,7 @@ export default function WriteOffTable() {
       }
     } else {
       if (!form.borrowerId || !form.writeOffDate || !form.outstandingAmount) return;
+      if (writtenOffIds.has(form.borrowerId)) return;
       addWriteOff({
         borrowerId: form.borrowerId,
         writeOffDate: form.writeOffDate,
