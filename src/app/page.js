@@ -8,6 +8,7 @@ import Dashboard from "@/components/Dashboard";
 
 export default function Home() {
   const [tutorialOpen, setTutorialOpen] = useState(true);
+  const [tablesOpen, setTablesOpen] = useState(true);
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-6">
@@ -43,14 +44,23 @@ export default function Home() {
 
       <SimulationTabs />
 
-      <p className="text-sm text-gray-500 mb-4">
-        Input lender investments and borrower repayments to simulate profit
-        distribution.
-      </p>
-
-      <div className="space-y-4 mb-6">
-        <LenderInvestmentTable />
-        <BorrowerRepaymentTable />
+      <div className="mb-6">
+        <button
+          onClick={() => setTablesOpen(!tablesOpen)}
+          className="flex items-center gap-2 mb-2"
+        >
+          <span className="text-sm text-gray-500">{tablesOpen ? "▲" : "▼"}</span>
+          <p className="text-sm text-gray-500">
+            Input lender investments and borrower repayments to simulate profit
+            distribution.
+          </p>
+        </button>
+        {tablesOpen && (
+          <div className="space-y-4">
+            <LenderInvestmentTable />
+            <BorrowerRepaymentTable />
+          </div>
+        )}
       </div>
 
       <Dashboard />
