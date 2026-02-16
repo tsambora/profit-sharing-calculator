@@ -7,21 +7,98 @@ function genId() {
   return String(nextId++);
 }
 
-function createEmptyTab() {
+function createEmptyTab(name) {
   return {
+    name: name || "",
     investments: [],
     borrowers: [],
     results: null,
   };
 }
 
+function createDefaultTabs() {
+  const tabs = {};
+
+  function makeBorrowers(start, end, startDate, repaymentStopDate) {
+    const borrowers = [];
+    for (let i = start; i <= end; i++) {
+      const num = String(i).padStart(3, "0");
+      borrowers.push({
+        id: genId(),
+        borrowerId: `B-${num}`,
+        schedule: "weekly",
+        startDate,
+        amount: 133000,
+        loanAmount: 5000000,
+        repaymentStopDate: repaymentStopDate || "",
+      });
+    }
+    return borrowers;
+  }
+
+  // Happy Path 1
+  tabs["1"] = {
+    name: "Happy Path 1",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+    ],
+    borrowers: makeBorrowers(1, 20, "2026-01-08"),
+    results: null,
+  };
+
+  // Happy Path 2
+  tabs["2"] = {
+    name: "Happy Path 2",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-02-01", amount: 100000000 },
+    ],
+    borrowers: [
+      ...makeBorrowers(1, 20, "2026-01-08"),
+      ...makeBorrowers(21, 40, "2026-02-08"),
+    ],
+    results: null,
+  };
+
+  // Divestment
+  tabs["3"] = {
+    name: "Divestment",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-02-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-001", type: "withdraw", date: "2026-07-01", amount: 50000000 },
+      { id: genId(), lenderId: "L-003", type: "topup", date: "2026-07-01", amount: 50000000 },
+    ],
+    borrowers: [
+      ...makeBorrowers(1, 20, "2026-01-08"),
+      ...makeBorrowers(21, 40, "2026-02-08"),
+    ],
+    results: null,
+  };
+
+  // Write Off
+  tabs["4"] = {
+    name: "Write Off",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+    ],
+    borrowers: [
+      ...makeBorrowers(1, 17, "2026-01-08"),
+      ...makeBorrowers(18, 20, "2026-01-08", "2026-01-08"),
+    ],
+    results: null,
+  };
+
+  return tabs;
+}
+
 const useSimulationStore = create(
   persist(
     (set, get) => ({
       // Tab management
-      tabs: { "1": createEmptyTab() },
+      tabs: createDefaultTabs(),
       activeTabId: "1",
-      tabCounter: 1,
+      tabCounter: 4,
 
       addTab: () => {
         const state = get();
@@ -190,6 +267,7 @@ const useSimulationStore = create(
           Object.entries(state.tabs).map(([id, tab]) => [
             id,
             {
+              name: tab.name,
               investments: tab.investments,
               borrowers: tab.borrowers,
             },

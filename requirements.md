@@ -287,3 +287,18 @@ NAV after payout day:
 - Each table is scrollable with a max height and has a sticky header row.
 - Numbers are formatted with Indonesian locale (dot thousand separators).
 - Tables are rendered in a 2-column grid layout matching the graphs grid.
+
+### 30. Default scenario tabs pre-populated on first load
+
+**Acceptance Criteria:**
+
+- On first load (no localStorage data), 4 named tabs are pre-populated with example scenarios so users can immediately generate graphs and explore the simulator.
+- All scenarios use year 2026, weekly repayment schedule, loan amount 5,000,000 per borrower, repayment amount 133,000/week.
+- The 4 default tabs are:
+  1. **Happy Path 1** — 1 lender (L-001: 100M topup Jan 1), 20 borrowers (B-001..B-020, start Jan 8).
+  2. **Happy Path 2** — 2 lenders (L-001: 100M Jan 1, L-002: 100M Feb 1), 40 borrowers (B-001..B-020 start Jan 8, B-021..B-040 start Feb 8).
+  3. **Divestment** — Same 2 lenders as Happy Path 2 plus L-001 withdraws 50M Jul 1 and L-003 tops up 50M Jul 1, same 40 borrowers.
+  4. **Write Off** — 1 lender (L-001: 100M Jan 1), 20 borrowers (B-001..B-020 start Jan 8), where B-018..B-020 have repaymentStopDate "2026-01-08" (default immediately).
+- Each tab has a `name` property displayed in the tab bar instead of "Simulation {id}".
+- Tabs without a name (e.g., from existing localStorage data or newly created tabs) fall back to displaying "Simulation {id}".
+- Existing users with localStorage data keep their data unchanged — the defaults are only used when no persisted state exists.

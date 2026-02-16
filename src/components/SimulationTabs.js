@@ -19,7 +19,7 @@ export default function SimulationTabs() {
               : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          <span onClick={() => setActiveTab(id)}>Simulation {id}</span>
+          <span onClick={() => setActiveTab(id)}>{tabs[id]?.name || `Simulation ${id}`}</span>
           {tabIds.length > 1 && (
             <button
               onClick={(e) => {
