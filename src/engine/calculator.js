@@ -128,6 +128,22 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
     lenderPrincipal: 0,
   };
 
+  // Rebidding state
+  const rebiddingLoans = []; // { loanAmount, weeklyRepayment, startDate, repaymentDay }
+  let monthlyRebiddingPools = {
+    lenderMargin: 0,
+    platformProvision: 0,
+    platformRevenue: 0,
+    lenderPrincipal: 0,
+  };
+  let cumulativeRebiddingPools = {
+    lenderMargin: 0,
+    platformProvision: 0,
+    platformRevenue: 0,
+    lenderPrincipal: 0,
+  };
+  let totalRebiddingRepaid = 0;
+
   // Output time series
   const dailySnapshots = [];
   const monthlyPayouts = [];
@@ -193,6 +209,45 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       }
     }
 
+    // 2b. Process rebidding loan repayments for today
+    let todayRebiddingRepaymentTotal = 0;
+    for (const rl of rebiddingLoans) {
+      // Only active after start date
+      if (dateStr < rl.startDate) continue;
+      // Check if today matches the weekly repayment day
+      if (current.getDay() !== rl.repaymentDay) continue;
+      // Check if loan is fully repaid (133% cap)
+      const maxRepayment = rl.loanAmount * 1.33;
+      if (rl.totalRepaid >= maxRepayment) continue;
+
+      const repaymentAmount = rl.weeklyRepayment;
+      const dist = distributeRepayment(repaymentAmount);
+
+      // Add to main pools (so NAV/write-offs/payouts work automatically)
+      monthlyPools.lenderMargin += dist.lenderMargin;
+      monthlyPools.platformProvision += dist.platformProvision;
+      monthlyPools.platformRevenue += dist.platformRevenue;
+      monthlyPools.lenderPrincipal += dist.lenderPrincipal;
+      cumulativePools.platformProvision += dist.platformProvision;
+      cumulativePools.platformRevenue += dist.platformRevenue;
+      cumulativePools.lenderPrincipal += dist.lenderPrincipal;
+
+      // Also track in rebidding-specific pools (for display)
+      monthlyRebiddingPools.lenderMargin += dist.lenderMargin;
+      monthlyRebiddingPools.platformProvision += dist.platformProvision;
+      monthlyRebiddingPools.platformRevenue += dist.platformRevenue;
+      monthlyRebiddingPools.lenderPrincipal += dist.lenderPrincipal;
+      cumulativeRebiddingPools.lenderMargin += dist.lenderMargin;
+      cumulativeRebiddingPools.platformProvision += dist.platformProvision;
+      cumulativeRebiddingPools.platformRevenue += dist.platformRevenue;
+      cumulativeRebiddingPools.lenderPrincipal += dist.lenderPrincipal;
+
+      todayRebiddingRepaymentTotal += repaymentAmount;
+      totalRebiddingRepaid += repaymentAmount;
+      rl.totalRepaid = (rl.totalRepaid || 0) + repaymentAmount;
+      totalRepaid += repaymentAmount;
+    }
+
     // 3. Process write-offs for today (accumulate for end of month)
     const todayWriteOffs = writeOffsByDate[dateStr] || [];
     for (const wo of todayWriteOffs) {
@@ -218,6 +273,8 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       totalRepaid,
       totalInvested,
       dailyRepayment: todayRepaymentTotal,
+      dailyRebiddingRepayment: todayRebiddingRepaymentTotal,
+      totalRebiddingRepaid,
       outstandingAmount: totalInvested - totalRepaid,
       accumulatedMargin: monthlyPools.lenderMargin,
       pools: {
@@ -225,6 +282,12 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         platformProvision: cumulativePools.platformProvision,
         platformRevenue: cumulativePools.platformRevenue,
         lenderPrincipal: cumulativePools.lenderPrincipal,
+      },
+      rebiddingPools: {
+        lenderMargin: monthlyRebiddingPools.lenderMargin,
+        platformProvision: cumulativeRebiddingPools.platformProvision,
+        platformRevenue: cumulativeRebiddingPools.platformRevenue,
+        lenderPrincipal: cumulativeRebiddingPools.lenderPrincipal,
       },
       lenders: lenderSnapshots,
     });
@@ -286,8 +349,26 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         dailySnapshots[dailySnapshots.length - 1].navAfterPayout = nav;
       }
 
+      // Create rebidding loan from accumulated lender principal
+      if (monthlyPools.lenderPrincipal > 0) {
+        const nextMonth = addDays(current, 1); // first day of next month
+        rebiddingLoans.push({
+          loanAmount: monthlyPools.lenderPrincipal,
+          weeklyRepayment: 133000,
+          startDate: formatDate(nextMonth),
+          repaymentDay: nextMonth.getDay(),
+          totalRepaid: 0,
+        });
+      }
+
       // Reset monthly accumulators
       monthlyPools = {
+        lenderMargin: 0,
+        platformProvision: 0,
+        platformRevenue: 0,
+        lenderPrincipal: 0,
+      };
+      monthlyRebiddingPools = {
         lenderMargin: 0,
         platformProvision: 0,
         platformRevenue: 0,
@@ -377,6 +458,10 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     lenderPrincipal: Math.round(s.pools.lenderPrincipal),
     platformRevenue: Math.round(s.pools.platformRevenue),
     platformProvision: Math.round(s.pools.platformProvision),
+    rebiddingLenderMargin: Math.round(s.rebiddingPools.lenderMargin),
+    rebiddingLenderPrincipal: Math.round(s.rebiddingPools.lenderPrincipal),
+    rebiddingPlatformRevenue: Math.round(s.rebiddingPools.platformRevenue),
+    rebiddingPlatformProvision: Math.round(s.rebiddingPools.platformProvision),
   }));
 
   // Daily Repayment Chart: repayment amount per day
@@ -385,20 +470,32 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     dailyRepayment: Math.round(s.dailyRepayment),
   }));
 
+  // Daily Rebidding Repayment Chart
+  const dailyRebiddingRepaymentData = dailySnapshots.map((s) => ({
+    date: s.date,
+    dailyRebiddingRepayment: Math.round(s.dailyRebiddingRepayment),
+  }));
+
   // Total Repayment Chart: cumulative repayment over time
   const totalRepaymentData = dailySnapshots.map((s) => ({
     date: s.date,
     totalRepaid: Math.round(s.totalRepaid),
+    totalRebiddingRepaid: Math.round(s.totalRebiddingRepaid),
   }));
 
   // Table data: raw snapshot data for calculation tables
   const tableData = dailySnapshots.map((s) => ({
     date: s.date,
     dailyRepayment: s.dailyRepayment,
+    dailyRebiddingRepayment: s.dailyRebiddingRepayment,
     lenderMargin: s.pools.lenderMargin,
     lenderPrincipal: s.pools.lenderPrincipal,
     platformRevenue: s.pools.platformRevenue,
     platformProvision: s.pools.platformProvision,
+    rebiddingLenderMargin: s.rebiddingPools.lenderMargin,
+    rebiddingLenderPrincipal: s.rebiddingPools.lenderPrincipal,
+    rebiddingPlatformRevenue: s.rebiddingPools.platformRevenue,
+    rebiddingPlatformProvision: s.rebiddingPools.platformProvision,
     nav: s.navAfterPayout ?? s.nav,
     accumulatedMargin: s.accumulatedMargin,
     totalAum: s.totalAum,
@@ -418,6 +515,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     aumData,
     poolsData,
     dailyRepaymentData,
+    dailyRebiddingRepaymentData,
     totalRepaymentData,
     tableData,
     lenderIds: allLenderIds,

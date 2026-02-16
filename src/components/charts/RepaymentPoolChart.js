@@ -18,6 +18,10 @@ export default function RepaymentPoolChart({
   strokeColor,
   fillColor,
   noSample = false,
+  secondDataKey,
+  secondStrokeColor = "#f97316",
+  secondFillColor = "#fed7aa",
+  secondName = "Rebidding",
 }) {
   if (!data || data.length === 0) return null;
 
@@ -51,6 +55,17 @@ export default function RepaymentPoolChart({
             name={title}
             strokeWidth={2}
           />
+          {secondDataKey && (
+            <Area
+              type="monotone"
+              dataKey={secondDataKey}
+              stroke={secondStrokeColor}
+              fill={secondFillColor}
+              name={secondName}
+              strokeWidth={2}
+              strokeDasharray="5 5"
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
     </div>
