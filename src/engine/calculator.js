@@ -391,6 +391,22 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     totalRepaid: Math.round(s.totalRepaid),
   }));
 
+  // Table data: raw snapshot data for calculation tables
+  const tableData = dailySnapshots.map((s) => ({
+    date: s.date,
+    dailyRepayment: s.dailyRepayment,
+    lenderMargin: s.pools.lenderMargin,
+    lenderPrincipal: s.pools.lenderPrincipal,
+    platformRevenue: s.pools.platformRevenue,
+    platformProvision: s.pools.platformProvision,
+    nav: s.navAfterPayout ?? s.nav,
+    accumulatedMargin: s.accumulatedMargin,
+    totalAum: s.totalAum,
+    totalUnits: s.totalUnits,
+    totalInvested: s.totalInvested,
+    totalRepaid: s.totalRepaid,
+  }));
+
   return {
     navData,
     repaymentData,
@@ -403,6 +419,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     poolsData,
     dailyRepaymentData,
     totalRepaymentData,
+    tableData,
     lenderIds: allLenderIds,
     allLenderIds: [...new Set(Object.keys(finalLenderState))],
   };

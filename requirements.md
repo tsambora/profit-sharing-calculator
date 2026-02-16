@@ -270,3 +270,20 @@ NAV after payout day:
 
 - All monetary graphs use Indonesian locale formatting with dots as thousand separators (e.g., `2.660.000` instead of `2660000`) for both Y-axis ticks and tooltip values.
 - This applies to: the 4 repayment pool graphs, Daily Repayment, Total Repayment, NAV, AUM, Monthly Payout, and Principal vs Payout charts.
+
+### 29. Calculation tables below graphs
+
+**Acceptance Criteria:**
+
+- Below all graphs, a "Calculation Tables" section displays 6 data tables showing daily computation details with a "How to Calculate" formula column.
+- The 6 tables are:
+  1. **Lenders Margin** — Date, Daily Repayment, Daily Margin (`15% × repayment`), Cumulative Margin (resets monthly), formula.
+  2. **Lenders Principal** — Date, Daily Repayment, Daily Principal (`67% × repayment`), Cumulative Principal, formula.
+  3. **Platform Margin** — Date, Daily Repayment, Daily Platform Margin (`17% × repayment`), Cumulative, formula.
+  4. **Platform Provision** — Date, Daily Repayment, Daily Provision (`1% × repayment`), Cumulative, formula.
+  5. **NAV Movement** — Date, NAV, Accumulated Margin, Total AUM, Total Units, formula showing `(margin + AUM) / units`.
+  6. **AUM Movement** — Date, AUM, Total Invested, Total Repaid, formula describing what changed.
+- Tables only show rows where activity occurred (repayment > 0, or investment/AUM change) to keep them manageable.
+- Each table is scrollable with a max height and has a sticky header row.
+- Numbers are formatted with Indonesian locale (dot thousand separators).
+- Tables are rendered in a 2-column grid layout matching the graphs grid.
