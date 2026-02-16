@@ -104,6 +104,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
   let totalAum = 0;
   let totalRepaid = 0;
   let totalInvested = 0;
+  let totalWithdrawn = 0;
   // Lender state: { lenderId -> { units, totalInvested, totalPayout, totalPrincipalReturned } }
   const lenderState = {};
 
@@ -145,6 +146,64 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
   let totalRebiddingRepaid = 0;
   let rebiddingPrincipalAccumulator = 0;
 
+  // AUM Recovery state
+  let writeOffDeficit = 0;
+  let totalRecovered = 0;
+  let monthlyRecoveryFunneled = 0;
+
+  // Helper: process repayment distribution with AUM recovery logic
+  // When writeOffDeficit > 0, 83% (margin + principal + provision) is funneled to AUM recovery.
+  // Platform revenue (17%) always flows normally.
+  // Returns the amounts that actually went to pools.
+  function processRepaymentDistribution(dist) {
+    if (writeOffDeficit <= 0) {
+      // Normal flow — all to pools
+      return {
+        lenderMargin: dist.lenderMargin,
+        lenderPrincipal: dist.lenderPrincipal,
+        platformProvision: dist.platformProvision,
+        platformRevenue: dist.platformRevenue,
+      };
+    }
+
+    // Recovery mode: funnel 83% (lenderMargin + lenderPrincipal + platformProvision) to AUM
+    const recoveryPortion = dist.lenderMargin + dist.lenderPrincipal + dist.platformProvision;
+
+    if (recoveryPortion <= writeOffDeficit) {
+      // Full 83% goes to recovery
+      totalAum += recoveryPortion;
+      writeOffDeficit -= recoveryPortion;
+      totalRecovered += recoveryPortion;
+      monthlyRecoveryFunneled += recoveryPortion;
+
+      return {
+        lenderMargin: 0,
+        lenderPrincipal: 0,
+        platformProvision: 0,
+        platformRevenue: dist.platformRevenue, // always flows normally
+      };
+    }
+
+    // Deficit clears mid-repayment: funnel only what's needed, remainder to pools proportionally
+    const remainder = recoveryPortion - writeOffDeficit;
+    totalAum += writeOffDeficit;
+    totalRecovered += writeOffDeficit;
+    monthlyRecoveryFunneled += writeOffDeficit;
+    writeOffDeficit = 0;
+
+    // Distribute remainder proportionally to the three pools
+    const marginRatio = dist.lenderMargin / recoveryPortion;
+    const principalRatio = dist.lenderPrincipal / recoveryPortion;
+    const provisionRatio = dist.platformProvision / recoveryPortion;
+
+    return {
+      lenderMargin: remainder * marginRatio,
+      lenderPrincipal: remainder * principalRatio,
+      platformProvision: remainder * provisionRatio,
+      platformRevenue: dist.platformRevenue,
+    };
+  }
+
   // Output time series
   const dailySnapshots = [];
   const monthlyPayouts = [];
@@ -179,6 +238,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         totalUnits -= actualUnits;
         const withdrawAmount = actualUnits * nav;
         totalAum -= withdrawAmount;
+        totalWithdrawn += withdrawAmount;
       }
     }
 
@@ -197,14 +257,15 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       const schedule = repaymentSchedule[b.id] || [];
       if (schedule.includes(dateStr)) {
         const dist = distributeRepayment(b.amount);
-        monthlyPools.lenderMargin += dist.lenderMargin;
-        monthlyPools.platformProvision += dist.platformProvision;
-        monthlyPools.platformRevenue += dist.platformRevenue;
-        monthlyPools.lenderPrincipal += dist.lenderPrincipal;
-        cumulativePools.platformProvision += dist.platformProvision;
-        cumulativePools.platformRevenue += dist.platformRevenue;
-        cumulativePools.lenderPrincipal += dist.lenderPrincipal;
-        rebiddingPrincipalAccumulator += dist.lenderPrincipal;
+        const actual = processRepaymentDistribution(dist);
+        monthlyPools.lenderMargin += actual.lenderMargin;
+        monthlyPools.platformProvision += actual.platformProvision;
+        monthlyPools.platformRevenue += actual.platformRevenue;
+        monthlyPools.lenderPrincipal += actual.lenderPrincipal;
+        cumulativePools.platformProvision += actual.platformProvision;
+        cumulativePools.platformRevenue += actual.platformRevenue;
+        cumulativePools.lenderPrincipal += actual.lenderPrincipal;
+        rebiddingPrincipalAccumulator += actual.lenderPrincipal;
         todayRepaymentTotal += b.amount;
         totalRepaid += b.amount;
         borrowerCumulativeRepaid[b.borrowerId] = cumulative + b.amount;
@@ -224,26 +285,27 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
 
       const repaymentAmount = rl.weeklyRepayment;
       const dist = distributeRepayment(repaymentAmount);
+      const actual = processRepaymentDistribution(dist);
 
       // Add to main pools (so NAV/write-offs/payouts work automatically)
-      monthlyPools.lenderMargin += dist.lenderMargin;
-      monthlyPools.platformProvision += dist.platformProvision;
-      monthlyPools.platformRevenue += dist.platformRevenue;
-      monthlyPools.lenderPrincipal += dist.lenderPrincipal;
-      cumulativePools.platformProvision += dist.platformProvision;
-      cumulativePools.platformRevenue += dist.platformRevenue;
-      cumulativePools.lenderPrincipal += dist.lenderPrincipal;
-      rebiddingPrincipalAccumulator += dist.lenderPrincipal;
+      monthlyPools.lenderMargin += actual.lenderMargin;
+      monthlyPools.platformProvision += actual.platformProvision;
+      monthlyPools.platformRevenue += actual.platformRevenue;
+      monthlyPools.lenderPrincipal += actual.lenderPrincipal;
+      cumulativePools.platformProvision += actual.platformProvision;
+      cumulativePools.platformRevenue += actual.platformRevenue;
+      cumulativePools.lenderPrincipal += actual.lenderPrincipal;
+      rebiddingPrincipalAccumulator += actual.lenderPrincipal;
 
       // Also track in rebidding-specific pools (for display)
-      monthlyRebiddingPools.lenderMargin += dist.lenderMargin;
-      monthlyRebiddingPools.platformProvision += dist.platformProvision;
-      monthlyRebiddingPools.platformRevenue += dist.platformRevenue;
-      monthlyRebiddingPools.lenderPrincipal += dist.lenderPrincipal;
-      cumulativeRebiddingPools.lenderMargin += dist.lenderMargin;
-      cumulativeRebiddingPools.platformProvision += dist.platformProvision;
-      cumulativeRebiddingPools.platformRevenue += dist.platformRevenue;
-      cumulativeRebiddingPools.lenderPrincipal += dist.lenderPrincipal;
+      monthlyRebiddingPools.lenderMargin += actual.lenderMargin;
+      monthlyRebiddingPools.platformProvision += actual.platformProvision;
+      monthlyRebiddingPools.platformRevenue += actual.platformRevenue;
+      monthlyRebiddingPools.lenderPrincipal += actual.lenderPrincipal;
+      cumulativeRebiddingPools.lenderMargin += actual.lenderMargin;
+      cumulativeRebiddingPools.platformProvision += actual.platformProvision;
+      cumulativeRebiddingPools.platformRevenue += actual.platformRevenue;
+      cumulativeRebiddingPools.lenderPrincipal += actual.lenderPrincipal;
 
       todayRebiddingRepaymentTotal += repaymentAmount;
       totalRebiddingRepaid += repaymentAmount;
@@ -251,8 +313,8 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       totalRepaid += repaymentAmount;
     }
 
-    // 2c. Create rebidding loans when principal accumulator reaches 5M threshold
-    while (rebiddingPrincipalAccumulator >= 5000000) {
+    // 2c. Create rebidding loans when principal accumulator reaches 5M threshold (paused during recovery)
+    while (writeOffDeficit <= 0 && rebiddingPrincipalAccumulator >= 5000000) {
       const nextDay = addDays(current, 1);
       rebiddingLoans.push({
         loanAmount: 5000000,
@@ -288,11 +350,16 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       totalAum,
       totalRepaid,
       totalInvested,
+      totalWithdrawn,
       dailyRepayment: todayRepaymentTotal,
       dailyRebiddingRepayment: todayRebiddingRepaymentTotal,
       totalRebiddingRepaid,
       outstandingAmount: totalInvested - totalRepaid,
       accumulatedMargin: monthlyPools.lenderMargin,
+      writeOffDeficit,
+      recoveryMode: writeOffDeficit > 0,
+      totalRecovered,
+      monthlyRecoveryFunneled,
       pools: {
         lenderMargin: monthlyPools.lenderMargin,
         platformProvision: cumulativePools.platformProvision,
@@ -329,9 +396,10 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
           rebiddingPrincipalAccumulator = Math.max(0, rebiddingPrincipalAccumulator - principalAbsorbedByWriteOff);
         }
 
-        // Adjust AUM for unabsorbed principal loss (permanent)
+        // Adjust AUM for unabsorbed principal loss and track deficit for recovery
         if (writeOffResult.unabsorbed > 0) {
           totalAum -= writeOffResult.unabsorbed;
+          writeOffDeficit += writeOffResult.unabsorbed;
         }
       }
 
@@ -362,14 +430,30 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         totalMarginDistributed: monthlyPools.lenderMargin,
         writeOffAmount: monthlyWriteOffAmount,
         poolsAfterAbsorption: { ...monthlyPools },
+        recoveryMode: writeOffDeficit > 0,
+        monthlyRecoveryFunneled,
       });
 
       // Recalculate NAV after payout (margin pool emptied, AUM already adjusted)
       nav = totalUnits > 0 ? totalAum / totalUnits : INITIAL_NAV;
 
-      // Update the last daily snapshot with post-payout NAV
+      // Update the last daily snapshot with post-payout NAV, AUM, and write-off details
       if (dailySnapshots.length > 0) {
-        dailySnapshots[dailySnapshots.length - 1].navAfterPayout = nav;
+        const lastSnap = dailySnapshots[dailySnapshots.length - 1];
+        lastSnap.navAfterPayout = nav;
+        lastSnap.totalAum = totalAum;
+        lastSnap.writeOffDeficit = writeOffDeficit;
+        lastSnap.recoveryMode = writeOffDeficit > 0;
+        lastSnap.totalRecovered = totalRecovered;
+        lastSnap.monthlyRecoveryFunneled = monthlyRecoveryFunneled;
+        if (writeOffResult && monthlyPayouts.length > 0) {
+          const mp = monthlyPayouts[monthlyPayouts.length - 1];
+          lastSnap.writeOffDetail = {
+            totalWriteOff: mp.writeOffAmount,
+            absorbed: writeOffResult.totalAbsorbed,
+            unabsorbed: writeOffResult.unabsorbed,
+          };
+        }
       }
 
       // Reset monthly accumulators
@@ -386,6 +470,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         lenderPrincipal: 0,
       };
       monthlyWriteOffAmount = 0;
+      monthlyRecoveryFunneled = 0;
     }
 
     current = addDays(current, 1);
@@ -460,6 +545,8 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
   const aumData = dailySnapshots.map((s) => ({
     date: s.date,
     aum: Math.round(s.totalAum),
+    writeOffDeficit: Math.round(s.writeOffDeficit),
+    recoveryMode: s.recoveryMode,
   }));
 
   // Repayment Pools Chart: daily pool accumulation for all 4 buckets
@@ -503,6 +590,8 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
       totalUnits: mp.totalUnits,
       totalMargin: mp.totalMarginDistributed,
       payout: p.payout,
+      recoveryMode: mp.recoveryMode,
+      monthlyRecoveryFunneled: mp.monthlyRecoveryFunneled,
     }))
   );
 
@@ -541,7 +630,13 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     totalAum: s.totalAum,
     totalUnits: s.totalUnits,
     totalInvested: s.totalInvested,
+    totalWithdrawn: s.totalWithdrawn,
     totalRepaid: s.totalRepaid,
+    writeOffDetail: s.writeOffDetail || null,
+    writeOffDeficit: s.writeOffDeficit,
+    recoveryMode: s.recoveryMode,
+    totalRecovered: s.totalRecovered,
+    monthlyRecoveryFunneled: s.monthlyRecoveryFunneled,
   }));
 
   return {

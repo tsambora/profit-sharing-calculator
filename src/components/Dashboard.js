@@ -89,28 +89,41 @@ const aumColumns = [
   { header: "Date", accessor: (r) => r.date, format: "string" },
   { header: "AUM", accessor: (r) => r.totalAum, format: "number" },
   {
-    header: "Total Invested",
-    accessor: (r) => r.totalInvested,
-    format: "number",
-  },
-  {
-    header: "Total Repaid",
-    accessor: (r) => r.totalRepaid,
-    format: "number",
+    header: "Recovery",
+    accessor: (r) => r.recoveryMode ? `Deficit: ${fmtId(r.writeOffDeficit)}` : "",
+    format: "string",
   },
   {
     header: "How to Calculate",
     accessor: (r, prev) => {
-      if (!prev) return `Investment: +${fmtId(r.totalInvested)}`;
+      if (!prev) return `0 + ${fmtId(r.totalInvested)} (investment) = ${fmtId(r.totalAum)}`;
       const aumDiff = r.totalAum - prev.totalAum;
       const investDiff = r.totalInvested - prev.totalInvested;
-      const repaidDiff = r.totalRepaid - prev.totalRepaid;
+      const withdrawDiff = (r.totalWithdrawn || 0) - (prev.totalWithdrawn || 0);
+      if (aumDiff === 0 && !r.writeOffDetail) {
+        return `No change`;
+      }
       const parts = [];
-      if (investDiff > 0) parts.push(`Investment: +${fmtId(investDiff)}`);
-      if (repaidDiff > 0) parts.push(`Repayment day`);
-      if (aumDiff < 0 && investDiff === 0)
-        parts.push(`AUM change: ${fmtId(aumDiff)}`);
-      return parts.length > 0 ? parts.join(", ") : `No change`;
+      if (investDiff > 0) parts.push(`+ ${fmtId(investDiff)} (investment)`);
+      if (withdrawDiff > 0) parts.push(`- ${fmtId(withdrawDiff)} (withdrawal)`);
+
+      // Recovery funneling (AUM increase from repayment funnel)
+      const recoveryDiff = (r.monthlyRecoveryFunneled || 0) - (prev.monthlyRecoveryFunneled || 0);
+      if (recoveryDiff > 0) {
+        parts.push(`+ ${fmtId(recoveryDiff)} (AUM recovery from 83% repayment funnel)`);
+      }
+
+      // Write-off loss
+      const writeOffLoss = -aumDiff + investDiff - withdrawDiff + recoveryDiff;
+      if (writeOffLoss > 0) {
+        const wo = r.writeOffDetail || prev.writeOffDetail;
+        if (wo) {
+          parts.push(`- ${fmtId(writeOffLoss)} (unabsorbed write-off: total ${fmtId(wo.totalWriteOff)} − ${fmtId(wo.absorbed)} absorbed by pools)`);
+        } else {
+          parts.push(`- ${fmtId(writeOffLoss)} (unabsorbed write-off)`);
+        }
+      }
+      return `${fmtId(prev.totalAum)} ${parts.join(" ")} = ${fmtId(r.totalAum)}`;
     },
     format: "formula",
   },
@@ -130,6 +143,9 @@ const payoutColumns = [
   {
     header: "How to Calculate",
     accessor: (r) => {
+      if (r.recoveryMode && r.payout === 0) {
+        return `Recovery mode — margin funneled to AUM recovery (${fmtId(r.monthlyRecoveryFunneled)} recovered this month)`;
+      }
       return `(${formatDecimal(r.units)} / ${formatDecimal(r.totalUnits)}) \u00D7 ${fmtId(r.totalMargin)} = ${fmtId(r.payout)}`;
     },
     format: "formula",
