@@ -23,8 +23,8 @@ export default function PayoutChart({ data, lenderIds }) {
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} />
-          <Tooltip />
+          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v.toLocaleString("id-ID")} />
+          <Tooltip formatter={(v) => v.toLocaleString("id-ID")} />
           <Legend />
           {lenderIds.map((lid, i) => (
             <Bar

@@ -125,8 +125,9 @@ export default function NavChart({ data }) {
             tick={{ fontSize: 10 }}
             domain={["auto", "auto"]}
             allowDataOverflow
+            tickFormatter={(v) => v.toLocaleString("id-ID")}
           />
-          <Tooltip />
+          <Tooltip formatter={(v) => v.toLocaleString("id-ID")} />
           <Legend />
           <Line
             type="monotone"
