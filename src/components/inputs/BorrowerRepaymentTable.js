@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSimulationStore from "@/store/simulationStore";
+import { computeWriteOffDate, computeWriteOffOutstanding } from "@/engine/borrowerUtils";
 
 export default function BorrowerRepaymentTable() {
   const { tabs, activeTabId, addBorrower, updateBorrower, removeBorrower, clearBorrowers } =
@@ -13,6 +14,8 @@ export default function BorrowerRepaymentTable() {
     schedule: "weekly",
     startDate: "",
     amount: "",
+    loanAmount: "5000000",
+    repaymentStopDate: "",
     count: "",
   });
   const [editingId, setEditingId] = useState(null);
@@ -35,6 +38,8 @@ export default function BorrowerRepaymentTable() {
           schedule: form.schedule,
           startDate: form.startDate,
           amount: Number(form.amount),
+          loanAmount: Number(form.loanAmount) || 5000000,
+          repaymentStopDate: form.repaymentStopDate || "",
         });
       }
     } else {
@@ -44,10 +49,12 @@ export default function BorrowerRepaymentTable() {
         schedule: form.schedule,
         startDate: form.startDate,
         amount: Number(form.amount),
+        loanAmount: Number(form.loanAmount) || 5000000,
+        repaymentStopDate: form.repaymentStopDate || "",
       });
     }
 
-    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", count: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", loanAmount: "5000000", repaymentStopDate: "", count: "" });
   };
 
   const handleUpdate = () => {
@@ -57,9 +64,11 @@ export default function BorrowerRepaymentTable() {
       schedule: form.schedule,
       startDate: form.startDate,
       amount: Number(form.amount),
+      loanAmount: Number(form.loanAmount) || 5000000,
+      repaymentStopDate: form.repaymentStopDate || "",
     });
     setEditingId(null);
-    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", count: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", loanAmount: "5000000", repaymentStopDate: "", count: "" });
   };
 
   const startEdit = (b) => {
@@ -69,16 +78,30 @@ export default function BorrowerRepaymentTable() {
       schedule: b.schedule,
       startDate: b.startDate || "",
       amount: String(b.amount),
+      loanAmount: String(b.loanAmount || 5000000),
+      repaymentStopDate: b.repaymentStopDate || "",
       count: "",
     });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", count: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", loanAmount: "5000000", repaymentStopDate: "", count: "" });
   };
 
   const bulkMode = !editingId && Number(form.count) > 1;
+
+  // Compute write-off preview for the form
+  const formWriteOffDate = form.repaymentStopDate ? computeWriteOffDate(form.repaymentStopDate) : null;
+  const formOutstanding = (form.repaymentStopDate && form.startDate && form.amount && form.loanAmount)
+    ? computeWriteOffOutstanding(
+        form.startDate,
+        form.schedule,
+        form.repaymentStopDate,
+        Number(form.amount),
+        Number(form.loanAmount) || 5000000
+      )
+    : null;
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
@@ -94,7 +117,7 @@ export default function BorrowerRepaymentTable() {
         )}
       </div>
 
-      <div className="grid grid-cols-6 gap-2 mb-3">
+      <div className="grid grid-cols-4 gap-2 mb-2">
         <input
           type="text"
           placeholder="Borrower ID"
@@ -127,17 +150,43 @@ export default function BorrowerRepaymentTable() {
           value={form.amount}
           onChange={(e) => setForm({ ...form, amount: e.target.value })}
         />
-        {!editingId && (
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        <input
+          type="number"
+          placeholder="Loan Amount (default 5,000,000)"
+          className="border rounded px-2 py-1 text-sm"
+          value={form.loanAmount}
+          onChange={(e) => setForm({ ...form, loanAmount: e.target.value })}
+        />
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Repayment Stop Date</label>
           <input
-            type="number"
-            placeholder="How many borrowers?"
-            className="border rounded px-2 py-1 text-sm"
-            min="1"
-            value={form.count}
-            onChange={(e) => setForm({ ...form, count: e.target.value })}
+            type="date"
+            className="border rounded px-2 py-1 text-sm w-full"
+            value={form.repaymentStopDate}
+            onChange={(e) => setForm({ ...form, repaymentStopDate: e.target.value })}
           />
+        </div>
+        {form.repaymentStopDate && (
+          <div className="text-xs text-gray-500 flex flex-col justify-center">
+            <div>Write-off: <span className="font-medium text-gray-700">{formWriteOffDate}</span></div>
+            <div>Outstanding: <span className="font-medium text-gray-700">{formOutstanding !== null ? formOutstanding.toLocaleString() : "—"}</span></div>
+          </div>
         )}
-        <div className="flex gap-1">
+        {!form.repaymentStopDate && <div />}
+        <div className="flex gap-1 items-end">
+          {!editingId && (
+            <input
+              type="number"
+              placeholder="How many borrowers?"
+              className="border rounded px-2 py-1 text-sm w-44"
+              min="1"
+              value={form.count}
+              onChange={(e) => setForm({ ...form, count: e.target.value })}
+            />
+          )}
           {editingId ? (
             <>
               <button
@@ -165,47 +214,71 @@ export default function BorrowerRepaymentTable() {
       </div>
 
       {borrowers.length > 0 && (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="text-left py-2 px-2">Borrower ID</th>
-              <th className="text-left py-2 px-2">Schedule</th>
-              <th className="text-left py-2 px-2">Start Date</th>
-              <th className="text-right py-2 px-2">Amount</th>
-              <th className="text-right py-2 px-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {borrowers.map((b) => (
-              <tr key={b.id} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">{b.borrowerId}</td>
-                <td className="py-2 px-2">
-                  <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
-                    {b.schedule}
-                  </span>
-                </td>
-                <td className="py-2 px-2">{b.startDate}</td>
-                <td className="py-2 px-2 text-right">
-                  {b.amount.toLocaleString()}
-                </td>
-                <td className="py-2 px-2 text-right">
-                  <button
-                    onClick={() => startEdit(b)}
-                    className="text-blue-600 hover:text-blue-800 mr-2 text-xs"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => removeBorrower(b.id)}
-                    className="text-red-600 hover:text-red-800 text-xs"
-                  >
-                    Delete
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left py-2 px-2">Borrower ID</th>
+                <th className="text-left py-2 px-2">Schedule</th>
+                <th className="text-left py-2 px-2">Start Date</th>
+                <th className="text-right py-2 px-2">Repayment</th>
+                <th className="text-right py-2 px-2">Loan Amount</th>
+                <th className="text-left py-2 px-2">Stop Date</th>
+                <th className="text-left py-2 px-2">Write-Off Date</th>
+                <th className="text-right py-2 px-2">Outstanding</th>
+                <th className="text-right py-2 px-2">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {borrowers.map((b) => {
+                const woDate = b.repaymentStopDate ? computeWriteOffDate(b.repaymentStopDate) : null;
+                const outstanding = b.repaymentStopDate
+                  ? computeWriteOffOutstanding(b.startDate, b.schedule, b.repaymentStopDate, b.amount, b.loanAmount || 5000000)
+                  : null;
+                return (
+                  <tr key={b.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-2">{b.borrowerId}</td>
+                    <td className="py-2 px-2">
+                      <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+                        {b.schedule}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2">{b.startDate}</td>
+                    <td className="py-2 px-2 text-right">
+                      {b.amount.toLocaleString()}
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      {(b.loanAmount || 5000000).toLocaleString()}
+                    </td>
+                    <td className="py-2 px-2 text-gray-500">
+                      {b.repaymentStopDate || "—"}
+                    </td>
+                    <td className="py-2 px-2 text-gray-500">
+                      {woDate || "—"}
+                    </td>
+                    <td className="py-2 px-2 text-right text-gray-500">
+                      {outstanding !== null ? outstanding.toLocaleString() : "—"}
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      <button
+                        onClick={() => startEdit(b)}
+                        className="text-blue-600 hover:text-blue-800 mr-2 text-xs"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => removeBorrower(b.id)}
+                        className="text-red-600 hover:text-red-800 text-xs"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {borrowers.length === 0 && (

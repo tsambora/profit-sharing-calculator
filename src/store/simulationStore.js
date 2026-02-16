@@ -11,7 +11,6 @@ function createEmptyTab() {
   return {
     investments: [],
     borrowers: [],
-    writeOffs: [],
     results: null,
   };
 }
@@ -160,70 +159,11 @@ const useSimulationStore = create(
         });
       },
 
-      // Write-off actions
-      addWriteOff: (writeOff) => {
-        const state = get();
-        const tab = state.tabs[state.activeTabId];
-        set({
-          tabs: {
-            ...state.tabs,
-            [state.activeTabId]: {
-              ...tab,
-              writeOffs: [...tab.writeOffs, { ...writeOff, id: genId() }],
-              results: null,
-            },
-          },
-        });
-      },
-
-      updateWriteOff: (id, updates) => {
-        const state = get();
-        const tab = state.tabs[state.activeTabId];
-        set({
-          tabs: {
-            ...state.tabs,
-            [state.activeTabId]: {
-              ...tab,
-              writeOffs: tab.writeOffs.map((wo) =>
-                wo.id === id ? { ...wo, ...updates } : wo
-              ),
-              results: null,
-            },
-          },
-        });
-      },
-
-      removeWriteOff: (id) => {
-        const state = get();
-        const tab = state.tabs[state.activeTabId];
-        set({
-          tabs: {
-            ...state.tabs,
-            [state.activeTabId]: {
-              ...tab,
-              writeOffs: tab.writeOffs.filter((wo) => wo.id !== id),
-              results: null,
-            },
-          },
-        });
-      },
-
-      clearWriteOffs: () => {
-        const state = get();
-        const tab = state.tabs[state.activeTabId];
-        set({
-          tabs: {
-            ...state.tabs,
-            [state.activeTabId]: { ...tab, writeOffs: [], results: null },
-          },
-        });
-      },
-
       // Run simulation
       runSimulation: () => {
         const state = get();
         const tab = state.tabs[state.activeTabId];
-        const results = runSimulation(tab.investments, tab.borrowers, tab.writeOffs);
+        const results = runSimulation(tab.investments, tab.borrowers);
         set({
           tabs: {
             ...state.tabs,
@@ -239,8 +179,7 @@ const useSimulationStore = create(
         if (!tab) return false;
         return (
           tab.investments.length > 0 &&
-          tab.borrowers.length > 0 &&
-          tab.writeOffs.length > 0
+          tab.borrowers.length > 0
         );
       },
     }),
@@ -253,7 +192,6 @@ const useSimulationStore = create(
             {
               investments: tab.investments,
               borrowers: tab.borrowers,
-              writeOffs: tab.writeOffs,
             },
           ])
         ),
@@ -265,7 +203,13 @@ const useSimulationStore = create(
         // Restore nextId to be higher than any existing item id
         let maxId = 0;
         for (const tab of Object.values(state.tabs)) {
-          for (const item of [...tab.investments, ...tab.borrowers, ...tab.writeOffs]) {
+          // Migration: remove old writeOffs array, default loanAmount for existing borrowers
+          if (tab.writeOffs) delete tab.writeOffs;
+          for (const b of tab.borrowers) {
+            if (b.loanAmount === undefined) b.loanAmount = 5000000;
+            if (b.repaymentStopDate === undefined) b.repaymentStopDate = "";
+          }
+          for (const item of [...tab.investments, ...tab.borrowers]) {
             const num = Number(item.id);
             if (num > maxId) maxId = num;
           }

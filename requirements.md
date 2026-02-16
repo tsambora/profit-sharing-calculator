@@ -47,16 +47,9 @@ User can input, edit, and delete multiple borrower repayment schedules with belo
 4. Repayment amount
 5. How many borrowers? (This is used to create multiple borrower at once. If users fill this in, borrower IDs will be automatically filled.)
 
-### 3. Accept user input for loan write off schedule and the outstanding amount of the written off loans
+### 3. ~~Accept user input for loan write off schedule~~ (Superseded by #24)
 
-**Acceptance Criteria:**
-
-User can input, edit, and delete multiple write off of loans in the fund with below attributes:
-
-1. Borrower ID
-2. Write off date
-3. Outstanding amount of the loan
-4. How many borrowers? (This is used to create multiple write-offs at once. Borrower IDs will be randomly picked from the existing borrower list.)
+*This requirement has been replaced. Write-off data is now part of the borrower input form. See requirement #24.*
 
 ### 4. Allow user to start generating graphs and refresh graphs based on all input
 
@@ -179,22 +172,13 @@ NAV after payout day:
 - Lender principal repayments are not used to recover the deficit — they were already counted in AUM as outstanding loans, so using them would be double-counting.
 - NAV reflects the permanently reduced AUM going forward.
 
-### 16. Written-off borrowers stop making repayments (180-day backdate)
+### 16. ~~Written-off borrowers stop making repayments (180-day backdate)~~ (Superseded by #24)
 
-**Acceptance Criteria:**
+*This requirement has been replaced. The repayment stop date is now set directly on the borrower form instead of being back-computed from a write-off date. See requirement #24.*
 
-- A loan is written off after the borrower has not made any repayment for 180 days. Therefore, when a write-off is declared, the borrower actually stopped paying 180 days before the write-off date.
-- At simulation start, each write-off's "stop date" is pre-computed as `write-off date - 180 days`.
-- From the stop date onward, that borrower no longer contributes repayments to the fund.
-- This reduces the total repayment inflow and accurately reflects the period of non-payment leading up to the write-off.
+### 17. ~~Prevent duplicate write-offs for the same borrower~~ (Superseded by #24)
 
-### 17. Prevent duplicate write-offs for the same borrower
-
-**Acceptance Criteria:**
-
-- A borrower can only be written off once.
-- Bulk write-off creation only picks from borrowers that have not already been written off.
-- Single write-off creation blocks adding a borrower ID that is already in the write-off table.
+*This requirement is no longer needed. Write-off data is now part of the borrower record itself, so duplicates are structurally impossible.*
 
 ### 18. NAV after payout uses adjusted AUM directly
 
@@ -237,3 +221,35 @@ NAV after payout day:
 - Whenever there's a repayment from several borrowers in a day, the total repaid amount shall be incremented. This graph is TO to indicate or track the total amount of repayment.
 - This graph should come before the portion graphs.
 - The numbers in the graph to track total repayment amount and the graph for daily repayment amount SHOULD TALLY with the numbers in the graphs for lenders margin, lenders principal, platform margin, and platform principal.
+
+### 24. Write-off fields merged into borrower input
+
+**Acceptance Criteria:**
+
+- The standalone write-off input table has been removed. Write-off information is now part of the borrower form.
+- Each borrower has two new optional fields:
+  1. **Repayment Stop Date** — the date the borrower stops making repayments (replaces the old 180-day backdate from write-off date).
+  2. **Write-Off Date** — automatically computed as the 1st of the month following the stop date (read-only, displayed in form and table).
+- When a repayment stop date is set, the **write-off outstanding amount** is automatically computed as `max(0, loanAmount - totalRepaid)` where totalRepaid counts repayments from start date to stop date.
+- The write-off outstanding amount is displayed in both the form (as a preview) and the table (as a computed column).
+- Borrowers without a repayment stop date behave normally with no write-off.
+- The "Generate Graphs" button now only requires at least one investment and one borrower (write-offs are no longer a separate prerequisite).
+- Existing localStorage data migrates gracefully: old `writeOffs` arrays are ignored, and borrowers without `loanAmount` or `repaymentStopDate` receive default values.
+
+### 25. Loan amount field with default value
+
+**Acceptance Criteria:**
+
+- Each borrower has a **Loan Amount** field, defaulting to **5,000,000 IDR**.
+- The loan amount is editable in the borrower form and persisted with the borrower record.
+- The loan amount is used to compute the write-off outstanding amount and the 133% completion cap.
+- Bulk-created borrowers all share the same loan amount value from the form.
+
+### 26. 133% loan completion logic
+
+**Acceptance Criteria:**
+
+- A borrower automatically stops making repayments once their cumulative repaid amount reaches **133% of their loan amount** (`loanAmount * 1.33`).
+- This applies to all borrowers, regardless of whether they have a repayment stop date.
+- The 133% cap is enforced during simulation: each repayment increments a per-borrower cumulative counter, and once the threshold is reached, no further repayments are processed for that borrower.
+- The write-off outstanding calculation also respects the 133% cap when counting repayments between start and stop dates.

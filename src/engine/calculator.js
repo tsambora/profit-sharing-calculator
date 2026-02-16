@@ -8,6 +8,7 @@ import {
   calculateNavAfterPayout,
 } from "./navCalculator";
 import { calculateLenderPayouts } from "./payoutCalculator";
+import { computeWriteOffDate, computeWriteOffOutstanding } from "./borrowerUtils";
 
 // Helper: add days to a date
 function addDays(date, days) {
@@ -54,7 +55,7 @@ function buildRepaymentSchedule(borrowers, startDate, endDate) {
 }
 
 // Main simulation function
-export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 12) {
+export function runSimulation(investments, borrowers, tenorMonths = 12) {
   // Find date range
   const investmentDates = investments.map((i) => new Date(i.date));
   if (investmentDates.length === 0) return null;
@@ -65,12 +66,28 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
   // Build repayment schedule
   const repaymentSchedule = buildRepaymentSchedule(borrowers, startDate, endDate);
 
-  // Index write-offs by date
+  // Derive write-offs from borrowers that have a repaymentStopDate
   const writeOffsByDate = {};
-  for (const wo of writeOffs) {
-    const key = wo.writeOffDate;
-    if (!writeOffsByDate[key]) writeOffsByDate[key] = [];
-    writeOffsByDate[key].push(wo);
+  const borrowerStopDate = {};
+  for (const b of borrowers) {
+    if (!b.repaymentStopDate) continue;
+    borrowerStopDate[b.borrowerId] = b.repaymentStopDate;
+    const woDate = computeWriteOffDate(b.repaymentStopDate);
+    if (!woDate) continue;
+    const loanAmount = b.loanAmount || 5000000;
+    const outstandingAmount = computeWriteOffOutstanding(
+      b.startDate,
+      b.schedule,
+      b.repaymentStopDate,
+      b.amount,
+      loanAmount
+    );
+    if (!writeOffsByDate[woDate]) writeOffsByDate[woDate] = [];
+    writeOffsByDate[woDate].push({
+      borrowerId: b.borrowerId,
+      writeOffDate: woDate,
+      outstandingAmount,
+    });
   }
 
   // Index investments by date
@@ -90,6 +107,9 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
   // Lender state: { lenderId -> { units, totalInvested, totalPayout, totalPrincipalReturned } }
   const lenderState = {};
 
+  // Per-borrower cumulative repayment tracking for 133% cap
+  const borrowerCumulativeRepaid = {};
+
   // Monthly accumulated pools
   let monthlyPools = {
     lenderMargin: 0,
@@ -107,14 +127,6 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
     platformRevenue: 0,
     lenderPrincipal: 0,
   };
-
-  // Pre-compute the date each borrower stopped paying (write-off date - 180 days)
-  // A loan is written off after 180 days of non-payment, so repayments stop 180 days before
-  const borrowerStopDate = {};
-  for (const wo of writeOffs) {
-    const stopDate = addDays(new Date(wo.writeOffDate), -180);
-    borrowerStopDate[wo.borrowerId] = formatDate(stopDate);
-  }
 
   // Output time series
   const dailySnapshots = [];
@@ -153,10 +165,18 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
       }
     }
 
-    // 2. Process borrower repayments for today (skip borrowers past their stop date)
+    // 2. Process borrower repayments for today
     let todayRepaymentTotal = 0;
     for (const b of borrowers) {
+      // Skip borrowers past their repayment stop date
       if (borrowerStopDate[b.borrowerId] && dateStr >= borrowerStopDate[b.borrowerId]) continue;
+
+      // Skip borrowers that have reached 133% loan completion
+      const loanAmount = b.loanAmount || 5000000;
+      const maxRepaymentTotal = loanAmount * 1.33;
+      const cumulative = borrowerCumulativeRepaid[b.borrowerId] || 0;
+      if (cumulative >= maxRepaymentTotal) continue;
+
       const schedule = repaymentSchedule[b.id] || [];
       if (schedule.includes(dateStr)) {
         const dist = distributeRepayment(b.amount);
@@ -169,6 +189,7 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
         cumulativePools.lenderPrincipal += dist.lenderPrincipal;
         todayRepaymentTotal += b.amount;
         totalRepaid += b.amount;
+        borrowerCumulativeRepaid[b.borrowerId] = cumulative + b.amount;
       }
     }
 

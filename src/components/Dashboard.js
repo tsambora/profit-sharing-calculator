@@ -35,7 +35,7 @@ export default function Dashboard() {
         </button>
         {!canRun && (
           <span className="text-sm text-gray-500">
-            Add at least one entry to each input table to generate graphs
+            Add at least one investment and one borrower to generate graphs
           </span>
         )}
       </div>
