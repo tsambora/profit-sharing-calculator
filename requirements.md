@@ -268,4 +268,5 @@ NAV after payout day:
 
 **Acceptance Criteria:**
 
-- All numbers displayed inside the repayment pool graphs (Y-axis ticks and tooltip values) use Indonesian locale formatting with dots as thousand separators (e.g., `2.660.000` instead of `2660000`).
+- All monetary graphs use Indonesian locale formatting with dots as thousand separators (e.g., `2.660.000` instead of `2660000`) for both Y-axis ticks and tooltip values.
+- This applies to: the 4 repayment pool graphs, Daily Repayment, Total Repayment, NAV, AUM, Monthly Payout, and Principal vs Payout charts.
