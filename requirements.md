@@ -253,3 +253,19 @@ NAV after payout day:
 - This applies to all borrowers, regardless of whether they have a repayment stop date.
 - The 133% cap is enforced during simulation: each repayment increments a per-borrower cumulative counter, and once the threshold is reached, no further repayments are processed for that borrower.
 - The write-off outstanding calculation also respects the 133% cap when counting repayments between start and stop dates.
+
+### 27. Repayment portion labels on pool graphs
+
+**Acceptance Criteria:**
+
+- The 4 repayment pool graphs include the portion percentage in their title labels:
+  - "Lenders Margin (15% of repayment)"
+  - "Lenders Principal (67% of repayment)"
+  - "Platform Margin (17% of repayment)"
+  - "Platform Provision (1% of repayment)"
+
+### 28. Indonesian locale number formatting in graphs
+
+**Acceptance Criteria:**
+
+- All numbers displayed inside the repayment pool graphs (Y-axis ticks and tooltip values) use Indonesian locale formatting with dots as thousand separators (e.g., `2.660.000` instead of `2660000`).

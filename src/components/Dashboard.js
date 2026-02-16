@@ -60,28 +60,28 @@ export default function Dashboard() {
           <RepaymentPoolChart
             data={results.poolsData}
             dataKey="lenderMargin"
-            title="Lenders Margin"
+            title="Lenders Margin (15% of repayment)"
             strokeColor="#2563eb"
             fillColor="#dbeafe"
           />
           <RepaymentPoolChart
             data={results.poolsData}
             dataKey="lenderPrincipal"
-            title="Lenders Principal"
+            title="Lenders Principal (67% of repayment)"
             strokeColor="#16a34a"
             fillColor="#dcfce7"
           />
           <RepaymentPoolChart
             data={results.poolsData}
             dataKey="platformRevenue"
-            title="Platform Margin"
+            title="Platform Margin (17% of repayment)"
             strokeColor="#ca8a04"
             fillColor="#fef9c3"
           />
           <RepaymentPoolChart
             data={results.poolsData}
             dataKey="platformProvision"
-            title="Platform Provision"
+            title="Platform Provision (1% of repayment)"
             strokeColor="#dc2626"
             fillColor="#fee2e2"
           />
