@@ -302,3 +302,14 @@ NAV after payout day:
 - Each tab has a `name` property displayed in the tab bar instead of "Simulation {id}".
 - Tabs without a name (e.g., from existing localStorage data or newly created tabs) fall back to displaying "Simulation {id}".
 - Existing users with localStorage data keep their data unchanged — the defaults are only used when no persisted state exists.
+
+### 31. Threshold-based rebidding trigger
+
+**Acceptance Criteria:**
+
+- Rebidding loans are no longer created at month-end from the accumulated lender principal pool. Instead, a **5,000,000 IDR rebidding loan** is created whenever the accumulated lender principal reaches >= 5,000,000 IDR, regardless of month boundaries.
+- A `rebiddingPrincipalAccumulator` tracks principal from both original borrower repayments and rebidding loan repayments (the 67% lender principal portion).
+- When the accumulator reaches 5M, a new rebidding loan is created with: loan amount 5,000,000 IDR, weekly repayment 133,000 IDR, 133% cap, starting the next day.
+- Multiple rebidding loans can be created on the same day if the accumulator exceeds multiples of 5M.
+- The accumulator persists across month boundaries and is not reset at month-end.
+- When write-off absorption reduces the lender principal pool, the accumulator is reduced by the same amount (floored at 0) to prevent creating rebidding loans from principal that was lost to write-offs.

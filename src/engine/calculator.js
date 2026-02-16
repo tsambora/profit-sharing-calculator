@@ -143,6 +143,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
     lenderPrincipal: 0,
   };
   let totalRebiddingRepaid = 0;
+  let rebiddingPrincipalAccumulator = 0;
 
   // Output time series
   const dailySnapshots = [];
@@ -203,6 +204,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         cumulativePools.platformProvision += dist.platformProvision;
         cumulativePools.platformRevenue += dist.platformRevenue;
         cumulativePools.lenderPrincipal += dist.lenderPrincipal;
+        rebiddingPrincipalAccumulator += dist.lenderPrincipal;
         todayRepaymentTotal += b.amount;
         totalRepaid += b.amount;
         borrowerCumulativeRepaid[b.borrowerId] = cumulative + b.amount;
@@ -231,6 +233,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       cumulativePools.platformProvision += dist.platformProvision;
       cumulativePools.platformRevenue += dist.platformRevenue;
       cumulativePools.lenderPrincipal += dist.lenderPrincipal;
+      rebiddingPrincipalAccumulator += dist.lenderPrincipal;
 
       // Also track in rebidding-specific pools (for display)
       monthlyRebiddingPools.lenderMargin += dist.lenderMargin;
@@ -246,6 +249,19 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       totalRebiddingRepaid += repaymentAmount;
       rl.totalRepaid = (rl.totalRepaid || 0) + repaymentAmount;
       totalRepaid += repaymentAmount;
+    }
+
+    // 2c. Create rebidding loans when principal accumulator reaches 5M threshold
+    while (rebiddingPrincipalAccumulator >= 5000000) {
+      const nextDay = addDays(current, 1);
+      rebiddingLoans.push({
+        loanAmount: 5000000,
+        weeklyRepayment: 133000,
+        startDate: formatDate(nextDay),
+        repaymentDay: nextDay.getDay(),
+        totalRepaid: 0,
+      });
+      rebiddingPrincipalAccumulator -= 5000000;
     }
 
     // 3. Process write-offs for today (accumulate for end of month)
@@ -307,6 +323,12 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         cumulativePools.platformRevenue -= (preAbsorption.platformRevenue - monthlyPools.platformRevenue);
         cumulativePools.lenderPrincipal -= (preAbsorption.lenderPrincipal - monthlyPools.lenderPrincipal);
 
+        // Adjust rebidding accumulator for principal absorbed by write-off
+        const principalAbsorbedByWriteOff = preAbsorption.lenderPrincipal - monthlyPools.lenderPrincipal;
+        if (principalAbsorbedByWriteOff > 0) {
+          rebiddingPrincipalAccumulator = Math.max(0, rebiddingPrincipalAccumulator - principalAbsorbedByWriteOff);
+        }
+
         // Adjust AUM for unabsorbed principal loss (permanent)
         if (writeOffResult.unabsorbed > 0) {
           totalAum -= writeOffResult.unabsorbed;
@@ -347,18 +369,6 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       // Update the last daily snapshot with post-payout NAV
       if (dailySnapshots.length > 0) {
         dailySnapshots[dailySnapshots.length - 1].navAfterPayout = nav;
-      }
-
-      // Create rebidding loan from accumulated lender principal
-      if (monthlyPools.lenderPrincipal > 0) {
-        const nextMonth = addDays(current, 1); // first day of next month
-        rebiddingLoans.push({
-          loanAmount: monthlyPools.lenderPrincipal,
-          weeklyRepayment: 133000,
-          startDate: formatDate(nextMonth),
-          repaymentDay: nextMonth.getDay(),
-          totalRepaid: 0,
-        });
       }
 
       // Reset monthly accumulators

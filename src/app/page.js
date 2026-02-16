@@ -27,7 +27,7 @@ export default function Home() {
               <span className="font-bold">Repayment Pool Split</span> — Each repayment is split into 4 pools: Lender Margin (15%), Lender Principal (67%), Platform Margin (17%), Platform Provision (1%).
             </div>
             <div>
-              <span className="font-bold">Rebidding (Loan Re-addition)</span> — At month-end, accumulated Lender Principal funds a new loan (133K/week repayment). Repayments from rebidding loans flow through the same 4-pool split, compounding returns over time.
+              <span className="font-bold">Rebidding (Loan Re-addition)</span> — Whenever accumulated Lender Principal reaches 5,000,000 IDR, a new rebidding loan is created (5M loan, 133K/week repayment). This can trigger multiple times as principal accumulates. Repayments from rebidding loans flow through the same 4-pool split, compounding returns over time.
             </div>
             <div>
               <span className="font-bold">133% Loan Cap</span> — Each borrower repays up to 133% of their loan amount, then stops.
