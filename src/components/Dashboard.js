@@ -116,6 +116,53 @@ const aumColumns = [
   },
 ];
 
+const payoutColumns = [
+  { header: "Date", accessor: (r) => r.date, format: "string" },
+  { header: "Lender ID", accessor: (r) => r.lenderId, format: "string" },
+  { header: "Units Owned", accessor: (r) => r.units, format: "decimal" },
+  { header: "Total Units", accessor: (r) => r.totalUnits, format: "decimal" },
+  {
+    header: "Total Margin",
+    accessor: (r) => r.totalMargin,
+    format: "number",
+  },
+  { header: "Payout", accessor: (r) => r.payout, format: "number" },
+  {
+    header: "How to Calculate",
+    accessor: (r) => {
+      return `(${formatDecimal(r.units)} / ${formatDecimal(r.totalUnits)}) \u00D7 ${fmtId(r.totalMargin)} = ${fmtId(r.payout)}`;
+    },
+    format: "formula",
+  },
+];
+
+const returnRateColumns = [
+  { header: "Date", accessor: (r) => r.date, format: "string" },
+  { header: "Lender ID", accessor: (r) => r.lenderId, format: "string" },
+  {
+    header: "Total Payout",
+    accessor: (r) => r.totalPayout,
+    format: "number",
+  },
+  {
+    header: "Total Invested",
+    accessor: (r) => r.totalInvested,
+    format: "number",
+  },
+  {
+    header: "Return Rate",
+    accessor: (r) => `${r.returnRate}%`,
+    format: "string",
+  },
+  {
+    header: "How to Calculate",
+    accessor: (r) => {
+      return `(${fmtId(r.totalPayout)} / ${fmtId(r.totalInvested)}) \u00D7 100 = ${r.returnRate}%`;
+    },
+    format: "formula",
+  },
+];
+
 const hasActivity = (r, prev) => {
   if (r.dailyRepayment > 0) return true;
   if (!prev) return r.totalInvested > 0;
@@ -205,7 +252,7 @@ export default function Dashboard() {
               strokeColor="#0d9488"
               fillColor="#ccfbf1"
               secondDataKey="totalRebiddingRepaid"
-              secondName="Rebidding Total"
+              secondName="Repayment from Rebidding"
             />
             <RepaymentPoolChart
               data={results.poolsData}
@@ -297,6 +344,16 @@ export default function Dashboard() {
                   columns={aumColumns}
                   data={results.tableData}
                   filterFn={(r, prev) => hasActivity(r, prev)}
+                />
+                <CalculationTable
+                  title="Monthly Payout per Lender"
+                  columns={payoutColumns}
+                  data={results.payoutTableData}
+                />
+                <CalculationTable
+                  title="Return Rate per Lender"
+                  columns={returnRateColumns}
+                  data={results.returnRateTableData}
                 />
               </div>
             </div>

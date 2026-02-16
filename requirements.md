@@ -275,14 +275,16 @@ NAV after payout day:
 
 **Acceptance Criteria:**
 
-- Below all graphs, a "Calculation Tables" section displays 6 data tables showing daily computation details with a "How to Calculate" formula column.
-- The 6 tables are:
+- Below all graphs, a "Calculation Tables" section displays 8 data tables showing computation details with a "How to Calculate" formula column.
+- The 8 tables are:
   1. **Lenders Margin** — Date, Daily Repayment, Daily Margin (`15% × repayment`), Cumulative Margin (resets monthly), formula.
   2. **Lenders Principal** — Date, Daily Repayment, Daily Principal (`67% × repayment`), Cumulative Principal, formula.
   3. **Platform Margin** — Date, Daily Repayment, Daily Platform Margin (`17% × repayment`), Cumulative, formula.
   4. **Platform Provision** — Date, Daily Repayment, Daily Provision (`1% × repayment`), Cumulative, formula.
   5. **NAV Movement** — Date, NAV, Accumulated Margin, Total AUM, Total Units, formula showing `(margin + AUM) / units`.
   6. **AUM Movement** — Date, AUM, Total Invested, Total Repaid, formula describing what changed.
+  7. **Monthly Payout per Lender** — Date, Lender ID, Units Owned, Total Units, Total Margin, Payout, formula showing `(units / totalUnits) × totalMargin = payout`.
+  8. **Return Rate per Lender** — Date, Lender ID, Total Payout, Total Invested, Return Rate, formula showing `(totalPayout / totalInvested) × 100 = rate%`.
 - Tables only show rows where activity occurred (repayment > 0, or investment/AUM change) to keep them manageable.
 - Each table is scrollable with a max height and has a sticky header row.
 - Numbers are formatted with Indonesian locale (dot thousand separators).

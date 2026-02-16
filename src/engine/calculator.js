@@ -358,6 +358,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       monthlyPayouts.push({
         date: dateStr,
         payouts,
+        totalUnits,
         totalMarginDistributed: monthlyPools.lenderMargin,
         writeOffAmount: monthlyWriteOffAmount,
         poolsAfterAbsorption: { ...monthlyPools },
@@ -493,6 +494,35 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     totalRebiddingRepaid: Math.round(s.totalRebiddingRepaid),
   }));
 
+  // Payout table data: one row per lender per payout month
+  const payoutTableData = monthlyPayouts.flatMap((mp) =>
+    mp.payouts.map((p) => ({
+      date: mp.date,
+      lenderId: p.lenderId,
+      units: p.units,
+      totalUnits: mp.totalUnits,
+      totalMargin: mp.totalMarginDistributed,
+      payout: p.payout,
+    }))
+  );
+
+  // Return rate table data: one row per lender per payout month
+  const payoutDateSet = new Set(monthlyPayouts.map((mp) => mp.date));
+  const returnRateTableData = dailySnapshots
+    .filter((s) => payoutDateSet.has(s.date))
+    .flatMap((s) =>
+      Object.entries(s.lenders)
+        .filter(([, state]) => state.totalInvested > 0)
+        .map(([lid, state]) => ({
+          date: s.date,
+          lenderId: lid,
+          totalPayout: state.totalPayout,
+          totalInvested: state.totalInvested,
+          returnRate:
+            Math.round((state.totalPayout / state.totalInvested) * 10000) / 100,
+        }))
+    );
+
   // Table data: raw snapshot data for calculation tables
   const tableData = dailySnapshots.map((s) => ({
     date: s.date,
@@ -528,6 +558,8 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     dailyRebiddingRepaymentData,
     totalRepaymentData,
     tableData,
+    payoutTableData,
+    returnRateTableData,
     lenderIds: allLenderIds,
     allLenderIds: [...new Set(Object.keys(finalLenderState))],
   };
