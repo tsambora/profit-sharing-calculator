@@ -44,7 +44,7 @@ export default function RepaymentPoolChart({
             tick={{ fontSize: 10 }}
             interval="preserveStartEnd"
           />
-          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v.toLocaleString("id-ID")} />
+          <YAxis tick={{ fontSize: 10 }} width={80} tickFormatter={(v) => v.toLocaleString("id-ID")} />
           <Tooltip formatter={(v) => v.toLocaleString("id-ID")} />
           <Legend />
           <Area

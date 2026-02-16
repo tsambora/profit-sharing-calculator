@@ -23,7 +23,7 @@ export default function PrincipalReturnedChart({ data }) {
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="lenderId" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v.toLocaleString("id-ID")} />
+          <YAxis tick={{ fontSize: 10 }} width={80} tickFormatter={(v) => v.toLocaleString("id-ID")} />
           <Tooltip formatter={(v) => v.toLocaleString("id-ID")} />
           <Legend />
           <Bar dataKey="totalInvested" fill="#94a3b8" name="Total Invested" />

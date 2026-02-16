@@ -8,11 +8,44 @@ import Dashboard from "@/components/Dashboard";
 
 export default function Home() {
   const [tutorialOpen, setTutorialOpen] = useState(true);
+  const [guideOpen, setGuideOpen] = useState(true);
   const [tablesOpen, setTablesOpen] = useState(true);
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold mb-1">Profit Sharing Simulator</h1>
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+        <button
+          onClick={() => setGuideOpen(!guideOpen)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <h3 className="font-semibold text-green-900">How to Use This Simulator</h3>
+          <span className="text-green-600 text-sm">{guideOpen ? "▲" : "▼"}</span>
+        </button>
+        {guideOpen && (
+          <div className="mt-3 space-y-2 text-sm text-green-900">
+            <div>
+              <span className="font-bold">1. Set Up Lenders</span> — In the Lender Investment table, add one or more lenders. Adjust the <em>investment amount</em> and <em>start date</em> for each. Try adding multiple lenders with different amounts to see how payouts are distributed proportionally based on units held.
+            </div>
+            <div>
+              <span className="font-bold">2. Set Up Borrowers</span> — In the Borrower Repayment table, add borrowers with different <em>loan amounts</em>, <em>weekly repayment values</em>, and <em>start dates</em>. More borrowers or higher repayments mean faster fund returns and more frequent rebidding.
+            </div>
+            <div>
+              <span className="font-bold">3. Run the Simulation</span> — Click the <em>Run Simulation</em> button. The dashboard will show charts for AUM movement, NAV, payouts, and more.
+            </div>
+            <div>
+              <span className="font-bold">4. Things to Experiment With</span>
+              <ul className="list-disc ml-5 mt-1 space-y-1">
+                <li><strong>Large vs small investments</strong> — Compare a single 100M lender vs multiple smaller lenders to see how unit allocation affects payout distribution.</li>
+                <li><strong>Repayment speed</strong> — Increase weekly repayment amounts to see how faster borrower repayments accelerate rebidding and compound lender returns.</li>
+                <li><strong>Staggered timing</strong> — Set different start dates for lenders and borrowers to observe how late entries affect NAV and unit pricing.</li>
+                <li><strong>Multiple borrowers</strong> — Add several borrowers to see how a diversified loan book impacts the repayment pool and overall returns.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
         <button
           onClick={() => setTutorialOpen(!tutorialOpen)}

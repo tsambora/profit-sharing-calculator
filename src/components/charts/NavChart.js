@@ -123,6 +123,7 @@ export default function NavChart({ data }) {
           />
           <YAxis
             tick={{ fontSize: 10 }}
+            width={80}
             domain={["auto", "auto"]}
             allowDataOverflow
             tickFormatter={(v) => v.toLocaleString("id-ID")}
