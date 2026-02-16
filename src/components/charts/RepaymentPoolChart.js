@@ -63,7 +63,6 @@ export default function RepaymentPoolChart({
               fill={secondFillColor}
               name={secondName}
               strokeWidth={2}
-              strokeDasharray="5 5"
             />
           )}
         </AreaChart>
