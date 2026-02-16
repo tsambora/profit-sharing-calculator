@@ -8,6 +8,7 @@ import PrincipalReturnedChart from "./charts/PrincipalReturnedChart";
 import NavUnitsChart from "./charts/NavUnitsChart";
 import LenderUnitsChart from "./charts/LenderUnitsChart";
 import AumChart from "./charts/AumChart";
+import RepaymentPoolChart from "./charts/RepaymentPoolChart";
 
 export default function Dashboard() {
   const { tabs, activeTabId, runSimulation, canGenerate } = useSimulationStore();
@@ -41,6 +42,49 @@ export default function Dashboard() {
 
       {results && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RepaymentPoolChart
+            data={results.dailyRepaymentData}
+            dataKey="dailyRepayment"
+            title="Daily Repayment Amount"
+            strokeColor="#7c3aed"
+            fillColor="#ede9fe"
+            noSample
+          />
+          <RepaymentPoolChart
+            data={results.totalRepaymentData}
+            dataKey="totalRepaid"
+            title="Total Repayment Amount"
+            strokeColor="#0d9488"
+            fillColor="#ccfbf1"
+          />
+          <RepaymentPoolChart
+            data={results.poolsData}
+            dataKey="lenderMargin"
+            title="Lenders Margin"
+            strokeColor="#2563eb"
+            fillColor="#dbeafe"
+          />
+          <RepaymentPoolChart
+            data={results.poolsData}
+            dataKey="lenderPrincipal"
+            title="Lenders Principal"
+            strokeColor="#16a34a"
+            fillColor="#dcfce7"
+          />
+          <RepaymentPoolChart
+            data={results.poolsData}
+            dataKey="platformRevenue"
+            title="Platform Margin"
+            strokeColor="#ca8a04"
+            fillColor="#fef9c3"
+          />
+          <RepaymentPoolChart
+            data={results.poolsData}
+            dataKey="platformProvision"
+            title="Platform Provision"
+            strokeColor="#dc2626"
+            fillColor="#fee2e2"
+          />
           <NavChart data={results.navData} />
           <AumChart data={results.aumData} />
           <PayoutChart data={results.payoutData} lenderIds={results.lenderIds} />

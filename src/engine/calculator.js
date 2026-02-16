@@ -33,21 +33,18 @@ function isWeekday(date) {
   return day !== 0 && day !== 6;
 }
 
-// Helper: check if it's a Monday (weekly repayment day)
-function isMonday(date) {
-  return date.getDay() === 1;
-}
-
 // Build map of repayment dates for each borrower
 function buildRepaymentSchedule(borrowers, startDate, endDate) {
   const schedule = {};
   for (const b of borrowers) {
     schedule[b.id] = [];
-    let current = new Date(b.startDate || startDate);
+    const borrowerStart = new Date(b.startDate || startDate);
+    const repaymentDay = borrowerStart.getDay();
+    let current = new Date(borrowerStart);
     while (current <= endDate) {
       if (b.schedule === "daily" && isWeekday(current)) {
         schedule[b.id].push(formatDate(current));
-      } else if (b.schedule === "weekly" && isMonday(current)) {
+      } else if (b.schedule === "weekly" && current.getDay() === repaymentDay) {
         schedule[b.id].push(formatDate(current));
       }
       current = addDays(current, 1);
@@ -103,6 +100,13 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
 
   // Monthly accumulated write-off amount
   let monthlyWriteOffAmount = 0;
+
+  // Cumulative pools for graph tracking (these don't reset monthly, only reduced by write-offs)
+  let cumulativePools = {
+    platformProvision: 0,
+    platformRevenue: 0,
+    lenderPrincipal: 0,
+  };
 
   // Pre-compute the date each borrower stopped paying (write-off date - 180 days)
   // A loan is written off after 180 days of non-payment, so repayments stop 180 days before
@@ -160,6 +164,9 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
         monthlyPools.platformProvision += dist.platformProvision;
         monthlyPools.platformRevenue += dist.platformRevenue;
         monthlyPools.lenderPrincipal += dist.lenderPrincipal;
+        cumulativePools.platformProvision += dist.platformProvision;
+        cumulativePools.platformRevenue += dist.platformRevenue;
+        cumulativePools.lenderPrincipal += dist.lenderPrincipal;
         todayRepaymentTotal += b.amount;
         totalRepaid += b.amount;
       }
@@ -189,8 +196,15 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
       totalAum,
       totalRepaid,
       totalInvested,
+      dailyRepayment: todayRepaymentTotal,
       outstandingAmount: totalInvested - totalRepaid,
       accumulatedMargin: monthlyPools.lenderMargin,
+      pools: {
+        lenderMargin: monthlyPools.lenderMargin,
+        platformProvision: cumulativePools.platformProvision,
+        platformRevenue: cumulativePools.platformRevenue,
+        lenderPrincipal: cumulativePools.lenderPrincipal,
+      },
       lenders: lenderSnapshots,
     });
 
@@ -199,8 +213,15 @@ export function runSimulation(investments, borrowers, writeOffs, tenorMonths = 1
       // Apply write-off absorption
       let writeOffResult = null;
       if (monthlyWriteOffAmount > 0) {
+        // Track pre-absorption pool values to compute how much each cumulative pool lost
+        const preAbsorption = { ...monthlyPools };
         writeOffResult = absorbWriteOff(monthlyPools, monthlyWriteOffAmount);
         monthlyPools = writeOffResult.pools;
+
+        // Subtract write-off losses from cumulative pools
+        cumulativePools.platformProvision -= (preAbsorption.platformProvision - monthlyPools.platformProvision);
+        cumulativePools.platformRevenue -= (preAbsorption.platformRevenue - monthlyPools.platformRevenue);
+        cumulativePools.lenderPrincipal -= (preAbsorption.lenderPrincipal - monthlyPools.lenderPrincipal);
 
         // Adjust AUM for unabsorbed principal loss (permanent)
         if (writeOffResult.unabsorbed > 0) {
@@ -328,6 +349,27 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     aum: Math.round(s.totalAum),
   }));
 
+  // Repayment Pools Chart: daily pool accumulation for all 4 buckets
+  const poolsData = dailySnapshots.map((s) => ({
+    date: s.date,
+    lenderMargin: Math.round(s.pools.lenderMargin),
+    lenderPrincipal: Math.round(s.pools.lenderPrincipal),
+    platformRevenue: Math.round(s.pools.platformRevenue),
+    platformProvision: Math.round(s.pools.platformProvision),
+  }));
+
+  // Daily Repayment Chart: repayment amount per day
+  const dailyRepaymentData = dailySnapshots.map((s) => ({
+    date: s.date,
+    dailyRepayment: Math.round(s.dailyRepayment),
+  }));
+
+  // Total Repayment Chart: cumulative repayment over time
+  const totalRepaymentData = dailySnapshots.map((s) => ({
+    date: s.date,
+    totalRepaid: Math.round(s.totalRepaid),
+  }));
+
   return {
     navData,
     repaymentData,
@@ -337,6 +379,9 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     navUnitsData,
     lenderUnitsData,
     aumData,
+    poolsData,
+    dailyRepaymentData,
+    totalRepaymentData,
     lenderIds: allLenderIds,
     allLenderIds: [...new Set(Object.keys(finalLenderState))],
   };

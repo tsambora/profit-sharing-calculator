@@ -215,3 +215,25 @@ NAV after payout day:
 **Acceptance Criteria:**
 
 - All date picker inputs across the application (investment, borrower, write-off forms) have visible labels associated with them for accessibility.
+
+### 21. Graphs for all portion from repayment (lenders margin, lenders principal, platform margin, platform provision)
+
+- As described in the previous requirement, every repayment is funneled into 4 buckets: lenders margin, lenders principal, platform margin, and platform provision.
+- Lenders margin, lenders principal, platform margin, and platform provision each should have a graph visualizing their movements.
+- The graph should have 2 axes for time and amount of money in the bucket. The graphs should visualize the time series movement of the amounts.
+- These are the number that makes the NAV and profit sharing so it should appear before NAV graph.
+
+### 22. Graph for daily repayment amount
+
+- Based on the borrowers repayment schedule, there should be a graph to represent the movement in the repayment amount.
+- The graph should have 2 axes for time and the repayment amount.
+- Whenever there's a repayment from several borrowers in a day, the total repayment amount for that day will be represented in a graph. This graph is NOT to indicate or track the total amount of repayment.
+- This graph should come before the portion graphs.
+
+### 23. Graph to track total repayment amount
+
+- Based on the borrowers repayment schedule, there should be a graph to track total amount of repayment that has been accumulated.
+- The graph should have 2 axes for time and the total repaid amount.
+- Whenever there's a repayment from several borrowers in a day, the total repaid amount shall be incremented. This graph is TO to indicate or track the total amount of repayment.
+- This graph should come before the portion graphs.
+- The numbers in the graph to track total repayment amount and the graph for daily repayment amount SHOULD TALLY with the numbers in the graphs for lenders margin, lenders principal, platform margin, and platform principal.
