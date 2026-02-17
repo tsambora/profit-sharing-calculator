@@ -116,7 +116,7 @@ function createDefaultTabs() {
       const startDate = new Date(inv.date);
       startDate.setDate(startDate.getDate() + 7);
       const startStr = startDate.toISOString().split("T")[0];
-      allBorrowers.push(...makeDailyBorrowers(borrowerNum, borrowerNum + count - 1, startStr));
+      allBorrowers.push(...makeBorrowers(borrowerNum, borrowerNum + count - 1, startStr));
       borrowerNum += count;
     }
     return allBorrowers;
