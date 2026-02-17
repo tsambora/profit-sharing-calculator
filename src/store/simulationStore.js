@@ -36,6 +36,23 @@ function createDefaultTabs() {
     return borrowers;
   }
 
+  function makeDailyBorrowers(start, end, startDate) {
+    const borrowers = [];
+    for (let i = start; i <= end; i++) {
+      const num = String(i).padStart(3, "0");
+      borrowers.push({
+        id: genId(),
+        borrowerId: `B-${num}`,
+        schedule: "daily",
+        startDate,
+        amount: 133000,
+        loanAmount: 5000000,
+        repaymentStopDate: "",
+      });
+    }
+    return borrowers;
+  }
+
   // Happy Path 1
   tabs["1"] = {
     name: "Happy Path 1",
@@ -89,6 +106,46 @@ function createDefaultTabs() {
     results: null,
   };
 
+  // Gamification Scenario 1: Equal investment, staggered entry
+  // 3 lenders invest 100M each at different times — shows avg balance rewards early investors
+  tabs["5"] = {
+    name: "NAV vs Avg: Staggered",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-01-15", amount: 100000000 },
+      { id: genId(), lenderId: "L-003", type: "topup", date: "2026-01-25", amount: 100000000 },
+    ],
+    borrowers: makeDailyBorrowers(1, 10, "2026-01-01"),
+    results: null,
+  };
+
+  // Gamification Scenario 2: Late whale
+  // L-001 invests 100M on Jan 1, L-002 invests 1000M on Jan 25
+  // Shows NAV "syphoning" — late big investment captures disproportionate profit
+  tabs["6"] = {
+    name: "NAV vs Avg: Late Whale",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-01-25", amount: 1000000000 },
+    ],
+    borrowers: makeDailyBorrowers(1, 10, "2026-01-01"),
+    results: null,
+  };
+
+  // Gamification Scenario 3: Mid-month whale
+  // L-001 100M Jan 1, L-002 1000M Jan 8 (whale), L-003 100M Jan 25
+  // Shows that in NAV, L-003 entering late "syphons" the whale's profit
+  tabs["7"] = {
+    name: "NAV vs Avg: Mid Whale",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-01-08", amount: 1000000000 },
+      { id: genId(), lenderId: "L-003", type: "topup", date: "2026-01-25", amount: 100000000 },
+    ],
+    borrowers: makeDailyBorrowers(1, 10, "2026-01-01"),
+    results: null,
+  };
+
   return tabs;
 }
 
@@ -98,7 +155,7 @@ const useSimulationStore = create(
       // Tab management
       tabs: createDefaultTabs(),
       activeTabId: "1",
-      tabCounter: 4,
+      tabCounter: 7,
 
       addTab: () => {
         const state = get();
