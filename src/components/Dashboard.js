@@ -4,6 +4,7 @@ import useSimulationStore from "@/store/simulationStore";
 import NavChart from "./charts/NavChart";
 import PayoutChart from "./charts/PayoutChart";
 import ReturnRateChart from "./charts/ReturnRateChart";
+import ProfitComparisonChart from "./charts/ProfitComparisonChart";
 import PrincipalReturnedChart from "./charts/PrincipalReturnedChart";
 import NavUnitsChart from "./charts/NavUnitsChart";
 import LenderUnitsChart from "./charts/LenderUnitsChart";
@@ -147,6 +148,32 @@ const payoutColumns = [
         return `Recovery mode — margin funneled to AUM recovery (${fmtId(r.monthlyRecoveryFunneled)} recovered this month)`;
       }
       return `(${formatDecimal(r.units)} / ${formatDecimal(r.totalUnits)}) \u00D7 ${fmtId(r.totalMargin)} = ${fmtId(r.payout)}`;
+    },
+    format: "formula",
+  },
+];
+
+const profitComparisonColumns = [
+  { header: "Date", accessor: (r) => r.date, format: "string" },
+  { header: "Lender ID", accessor: (r) => r.lenderId, format: "string" },
+  { header: "Units Owned", accessor: (r) => r.units, format: "decimal" },
+  { header: "Total Units", accessor: (r) => r.totalUnits, format: "decimal" },
+  { header: "NAV Payout", accessor: (r) => r.navPayout, format: "number" },
+  { header: "Avg Balance", accessor: (r) => r.avgBalance, format: "number" },
+  {
+    header: "Total Avg Balance",
+    accessor: (r) => r.totalAvgBalance,
+    format: "number",
+  },
+  { header: "Avg Bal Payout", accessor: (r) => r.avgBalPayout, format: "number" },
+  { header: "Total Margin", accessor: (r) => r.totalMargin, format: "number" },
+  { header: "Difference", accessor: (r) => r.difference, format: "number" },
+  {
+    header: "How to Calculate",
+    accessor: (r) => {
+      const navCalc = `NAV: (${formatDecimal(r.units)} / ${formatDecimal(r.totalUnits)}) × ${fmtId(r.totalMargin)} = ${fmtId(r.navPayout)}`;
+      const avgCalc = `Avg: (${fmtId(r.avgBalance)} / ${fmtId(r.totalAvgBalance)}) × ${fmtId(r.totalMargin)} = ${fmtId(r.avgBalPayout)}`;
+      return `${navCalc} | ${avgCalc}`;
     },
     format: "formula",
   },
@@ -319,6 +346,10 @@ export default function Dashboard() {
               lenderIds={results.allLenderIds}
             />
             <PrincipalReturnedChart data={results.principalReturnedData} />
+            <ProfitComparisonChart
+              data={results.profitComparisonData}
+              lenderIds={results.allLenderIds}
+            />
           </div>
 
           {results.tableData && (
@@ -370,6 +401,11 @@ export default function Dashboard() {
                   title="Return Rate per Lender"
                   columns={returnRateColumns}
                   data={results.returnRateTableData}
+                />
+                <CalculationTable
+                  title="Profit Comparison: NAV vs Average Balance"
+                  columns={profitComparisonColumns}
+                  data={results.profitComparisonTableData}
                 />
               </div>
             </div>

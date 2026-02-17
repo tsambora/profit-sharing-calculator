@@ -315,3 +315,21 @@ NAV after payout day:
 - Multiple rebidding loans can be created on the same day if the accumulator exceeds multiples of 5M.
 - The accumulator persists across month boundaries and is not reset at month-end.
 - When write-off absorption reduces the lender principal pool, the accumulator is reduced by the same amount (floored at 0) to prevent creating rebidding loans from principal that was lost to write-offs.
+
+### 32. Average Balance vs NAV Profit Comparison
+
+**Acceptance Criteria:**
+
+- A **shadow calculation** compares two profit distribution methods using the same monthly margin pool:
+  1. **NAV method** (existing): `lenderPayout = (lenderUnits / totalUnits) × marginPool`
+  2. **Average balance method**: `lenderPayout = (lenderAvgBalance / totalAvgBalance) × marginPool`
+- The average balance is **time-weighted** per month: if a lender has 100M for 15 days and 50M for 15 days, their average balance for that month is 75M.
+- Balance changes are tracked on every topup and withdrawal event.
+- Average balance payouts are shadow-only — they do **not** affect NAV, AUM, units, or any lender state.
+- A new **Profit Distribution Comparison** chart shows cumulative payouts per lender over time:
+  - Blue/cool-toned solid lines for NAV method payouts
+  - Orange/warm-toned dashed lines for average balance method payouts
+  - Full-width chart (spans 2 columns in the grid), 300px height
+- A new **Profit Comparison** calculation table shows per lender per month:
+  - Date, Lender ID, Units Owned, Total Units, NAV Payout, Avg Balance, Total Avg Balance, Avg Bal Payout, Total Margin, Difference, How to Calculate
+- The total payout per month is the same for both methods (just distributed differently among lenders).

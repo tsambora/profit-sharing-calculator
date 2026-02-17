@@ -9,6 +9,11 @@ import {
 } from "./navCalculator";
 import { calculateLenderPayouts } from "./payoutCalculator";
 import { computeWriteOffDate, computeWriteOffOutstanding } from "./borrowerUtils";
+import {
+  recordBalanceChange,
+  calculateMonthlyAvgBalances,
+  calculateAvgBalancePayouts,
+} from "./avgBalanceCalculator";
 
 // Helper: add days to a date
 function addDays(date, days) {
@@ -110,6 +115,10 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
 
   // Per-borrower cumulative repayment tracking for 133% cap
   const borrowerCumulativeRepaid = {};
+
+  // Average balance tracking (shadow calculation)
+  const lenderBalances = {}; // lenderId -> current IDR balance
+  const balanceTracker = {}; // lenderId -> [{ date, balance }]
 
   // Monthly accumulated pools
   let monthlyPools = {
@@ -231,6 +240,9 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         totalUnits += units;
         totalAum += inv.amount;
         totalInvested += inv.amount;
+        // Track balance for avg balance calculation
+        lenderBalances[inv.lenderId] = (lenderBalances[inv.lenderId] || 0) + inv.amount;
+        recordBalanceChange(balanceTracker, inv.lenderId, dateStr, lenderBalances[inv.lenderId]);
       } else if (inv.type === "withdraw") {
         const units = calculateUnitsForWithdrawal(inv.amount, nav);
         const actualUnits = Math.min(units, lenderState[inv.lenderId].units);
@@ -239,6 +251,9 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         const withdrawAmount = actualUnits * nav;
         totalAum -= withdrawAmount;
         totalWithdrawn += withdrawAmount;
+        // Track balance for avg balance calculation
+        lenderBalances[inv.lenderId] = Math.max(0, (lenderBalances[inv.lenderId] || 0) - inv.amount);
+        recordBalanceChange(balanceTracker, inv.lenderId, dateStr, lenderBalances[inv.lenderId]);
       }
     }
 
@@ -422,10 +437,19 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         }
       }
 
+      // Calculate average balance payouts (shadow calculation)
+      const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
+      const avgBalances = calculateMonthlyAvgBalances(balanceTracker, formatDate(monthStart), dateStr);
+      const avgBalancePayoutsList = calculateAvgBalancePayouts(avgBalances, monthlyPools.lenderMargin);
+      const totalAvgBalance = Object.values(avgBalances).reduce((sum, b) => sum + b, 0);
+
       // Record monthly payout event
       monthlyPayouts.push({
         date: dateStr,
         payouts,
+        avgBalancePayouts: avgBalancePayoutsList,
+        avgBalances,
+        totalAvgBalance,
         totalUnits,
         totalMarginDistributed: monthlyPools.lenderMargin,
         writeOffAmount: monthlyWriteOffAmount,
@@ -639,6 +663,43 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     monthlyRecoveryFunneled: s.monthlyRecoveryFunneled,
   }));
 
+  // Profit Comparison Chart: cumulative payout per lender per month (NAV vs Avg Balance)
+  const cumulativeNav = {}; // lenderId -> cumulative NAV payout
+  const cumulativeAvg = {}; // lenderId -> cumulative avg balance payout
+  const profitComparisonData = monthlyPayouts.map((mp) => {
+    const row = { date: mp.date };
+    for (const lid of allLenderIds) {
+      const navPayout = mp.payouts.find((p) => p.lenderId === lid);
+      cumulativeNav[lid] = (cumulativeNav[lid] || 0) + (navPayout ? navPayout.payout : 0);
+      row[`nav_${lid}`] = Math.round(cumulativeNav[lid]);
+
+      const avgPayout = mp.avgBalancePayouts.find((p) => p.lenderId === lid);
+      cumulativeAvg[lid] = (cumulativeAvg[lid] || 0) + (avgPayout ? avgPayout.payout : 0);
+      row[`avg_${lid}`] = Math.round(cumulativeAvg[lid]);
+    }
+    return row;
+  });
+
+  // Profit Comparison Table: one row per lender per month with side-by-side data
+  const profitComparisonTableData = monthlyPayouts.flatMap((mp) =>
+    mp.payouts.map((p) => {
+      const avgEntry = mp.avgBalancePayouts.find((a) => a.lenderId === p.lenderId);
+      const avgBalance = mp.avgBalances[p.lenderId] || 0;
+      return {
+        date: mp.date,
+        lenderId: p.lenderId,
+        units: p.units,
+        totalUnits: mp.totalUnits,
+        navPayout: p.payout,
+        avgBalance,
+        totalAvgBalance: mp.totalAvgBalance,
+        avgBalPayout: avgEntry ? avgEntry.payout : 0,
+        totalMargin: mp.totalMarginDistributed,
+        difference: p.payout - (avgEntry ? avgEntry.payout : 0),
+      };
+    })
+  );
+
   return {
     navData,
     repaymentData,
@@ -655,6 +716,8 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     tableData,
     payoutTableData,
     returnRateTableData,
+    profitComparisonData,
+    profitComparisonTableData,
     lenderIds: allLenderIds,
     allLenderIds: [...new Set(Object.keys(finalLenderState))],
   };
