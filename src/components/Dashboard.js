@@ -48,12 +48,12 @@ function buildPoolTableColumns(poolLabel, fixedAmount, accessor, rebiddingAccess
   ];
   if (rebiddingAccessor) {
     cols.push({
-      header: `Rebidding ${poolLabel}`,
+      header: `${poolLabel} from Rebidding`,
       accessor: (r) => rebiddingAccessor(r),
       format: "number",
     });
     cols.push({
-      header: "Rebidding Calculation",
+      header: "Calculation from Rebidding",
       accessor: (r) => {
         const numRepayments = Math.round(r.dailyRebiddingRepayment / REPAYMENT);
         return `${numRepayments} repayments \u00D7 Rp ${fmtId(fixedAmount)} = ${fmtId(r.dailyRebiddingRepayment * ratio)}`;
@@ -306,7 +306,7 @@ export default function Dashboard() {
               strokeColor="#2563eb"
               fillColor="#dbeafe"
               secondDataKey="rebiddingLenderMargin"
-              secondName="Rebidding Margin"
+              secondName="Margin from Rebidding"
               noSample
             />
             <RepaymentPoolChart
@@ -316,7 +316,7 @@ export default function Dashboard() {
               strokeColor="#16a34a"
               fillColor="#dcfce7"
               secondDataKey="rebiddingLenderPrincipal"
-              secondName="Rebidding Principal"
+              secondName="Principal from Rebidding"
               noSample
             />
             <RepaymentPoolChart
@@ -326,7 +326,7 @@ export default function Dashboard() {
               strokeColor="#ca8a04"
               fillColor="#fef9c3"
               secondDataKey="rebiddingPlatformRevenue"
-              secondName="Rebidding Platform Margin"
+              secondName="Platform Margin from Rebidding"
               noSample
             />
             <RepaymentPoolChart
@@ -336,7 +336,7 @@ export default function Dashboard() {
               strokeColor="#dc2626"
               fillColor="#fee2e2"
               secondDataKey="rebiddingPlatformProvision"
-              secondName="Rebidding Provision"
+              secondName="Provision from Rebidding"
               noSample
             />
             <NavChart data={results.navData} />
