@@ -17,7 +17,9 @@ import CalculationTable, {
 
 const fmtId = (n) => Math.round(n).toLocaleString("id-ID");
 
-function buildPoolTableColumns(poolLabel, percentage, accessor, rebiddingAccessor) {
+function buildPoolTableColumns(poolLabel, fixedAmount, accessor, rebiddingAccessor) {
+  const REPAYMENT = 133000;
+  const ratio = fixedAmount / REPAYMENT;
   const cols = [
     { header: "Date", accessor: (r) => r.date, format: "string" },
     {
@@ -27,7 +29,7 @@ function buildPoolTableColumns(poolLabel, percentage, accessor, rebiddingAccesso
     },
     {
       header: `Daily ${poolLabel}`,
-      accessor: (r) => r.dailyRepayment * percentage,
+      accessor: (r) => r.dailyRepayment * ratio,
       format: "number",
     },
     {
@@ -38,8 +40,8 @@ function buildPoolTableColumns(poolLabel, percentage, accessor, rebiddingAccesso
     {
       header: "How to Calculate",
       accessor: (r) => {
-        const pct = `${Math.round(percentage * 100)}%`;
-        return `${pct} \u00D7 ${fmtId(r.dailyRepayment)} = ${fmtId(r.dailyRepayment * percentage)}`;
+        const numRepayments = Math.round(r.dailyRepayment / REPAYMENT);
+        return `${numRepayments} repayments \u00D7 Rp ${fmtId(fixedAmount)} = ${fmtId(r.dailyRepayment * ratio)}`;
       },
       format: "formula",
     },
@@ -53,8 +55,8 @@ function buildPoolTableColumns(poolLabel, percentage, accessor, rebiddingAccesso
     cols.push({
       header: "Rebidding Calculation",
       accessor: (r) => {
-        const pct = `${Math.round(percentage * 100)}%`;
-        return `${pct} \u00D7 ${fmtId(r.dailyRebiddingRepayment)} = ${fmtId(r.dailyRebiddingRepayment * percentage)}`;
+        const numRepayments = Math.round(r.dailyRebiddingRepayment / REPAYMENT);
+        return `${numRepayments} repayments \u00D7 Rp ${fmtId(fixedAmount)} = ${fmtId(r.dailyRebiddingRepayment * ratio)}`;
       },
       format: "formula",
     });
@@ -225,25 +227,25 @@ export default function Dashboard() {
 
   const lenderMarginColumns = buildPoolTableColumns(
     "Margin",
-    0.15,
+    15000,
     (r) => r.lenderMargin,
     (r) => r.rebiddingLenderMargin
   );
   const lenderPrincipalColumns = buildPoolTableColumns(
     "Principal",
-    0.67,
+    100000,
     (r) => r.lenderPrincipal,
     (r) => r.rebiddingLenderPrincipal
   );
   const platformMarginColumns = buildPoolTableColumns(
     "Platform Margin",
-    0.17,
+    17000,
     (r) => r.platformRevenue,
     (r) => r.rebiddingPlatformRevenue
   );
   const platformProvisionColumns = buildPoolTableColumns(
     "Provision",
-    0.01,
+    1000,
     (r) => r.platformProvision,
     (r) => r.rebiddingPlatformProvision
   );
@@ -300,7 +302,7 @@ export default function Dashboard() {
             <RepaymentPoolChart
               data={results.poolsData}
               dataKey="lenderMargin"
-              title="Lenders Margin (15% of repayment)"
+              title="Lenders Margin (Rp 15,000 per repayment)"
               strokeColor="#2563eb"
               fillColor="#dbeafe"
               secondDataKey="rebiddingLenderMargin"
@@ -309,7 +311,7 @@ export default function Dashboard() {
             <RepaymentPoolChart
               data={results.poolsData}
               dataKey="lenderPrincipal"
-              title="Lenders Principal (67% of repayment)"
+              title="Lenders Principal (Rp 100,000 per repayment)"
               strokeColor="#16a34a"
               fillColor="#dcfce7"
               secondDataKey="rebiddingLenderPrincipal"
@@ -318,7 +320,7 @@ export default function Dashboard() {
             <RepaymentPoolChart
               data={results.poolsData}
               dataKey="platformRevenue"
-              title="Platform Margin (17% of repayment)"
+              title="Platform Margin (Rp 17,000 per repayment)"
               strokeColor="#ca8a04"
               fillColor="#fef9c3"
               secondDataKey="rebiddingPlatformRevenue"
@@ -327,7 +329,7 @@ export default function Dashboard() {
             <RepaymentPoolChart
               data={results.poolsData}
               dataKey="platformProvision"
-              title="Platform Provision (1% of repayment)"
+              title="Platform Provision (Rp 1,000 per repayment)"
               strokeColor="#dc2626"
               fillColor="#fee2e2"
               secondDataKey="rebiddingPlatformProvision"
@@ -357,25 +359,25 @@ export default function Dashboard() {
               <h2 className="text-lg font-bold mb-4">Calculation Tables</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <CalculationTable
-                  title="Lenders Margin (15% of repayment — resets monthly)"
+                  title="Lenders Margin (Rp 15,000 per repayment — resets monthly)"
                   columns={lenderMarginColumns}
                   data={results.tableData}
                   filterFn={(r) => r.dailyRepayment > 0 || r.dailyRebiddingRepayment > 0}
                 />
                 <CalculationTable
-                  title="Lenders Principal (67% of repayment)"
+                  title="Lenders Principal (Rp 100,000 per repayment)"
                   columns={lenderPrincipalColumns}
                   data={results.tableData}
                   filterFn={(r) => r.dailyRepayment > 0 || r.dailyRebiddingRepayment > 0}
                 />
                 <CalculationTable
-                  title="Platform Margin (17% of repayment)"
+                  title="Platform Margin (Rp 17,000 per repayment)"
                   columns={platformMarginColumns}
                   data={results.tableData}
                   filterFn={(r) => r.dailyRepayment > 0 || r.dailyRebiddingRepayment > 0}
                 />
                 <CalculationTable
-                  title="Platform Provision (1% of repayment)"
+                  title="Platform Provision (Rp 1,000 per repayment)"
                   columns={platformProvisionColumns}
                   data={results.tableData}
                   filterFn={(r) => r.dailyRepayment > 0 || r.dailyRebiddingRepayment > 0}

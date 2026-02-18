@@ -1,11 +1,24 @@
-// Repayment distribution splits each repayment into 4 pools
-// Lender margin: 15%, Platform provision: 1%, Platform revenue: 17%, Lender principal: 67%
+// Repayment distribution splits each 133,000 IDR repayment into 4 pools
+// Based on a 5,000,000 IDR loan repaid over 50 installments at 133,000 each (133% of loan):
+// - Lenders principal: 100,000 (base principal return)
+// - Lenders margin: 15,000 (15% of principal)
+// - Platform margin: 17,000 (17% of principal)
+// - Platform provision: 1,000 (1% of principal)
+
+const REPAYMENT_AMOUNT = 133000;
+
+const FIXED_AMOUNTS = {
+  lenderPrincipal: 100000,
+  lenderMargin: 15000,
+  platformRevenue: 17000,
+  platformProvision: 1000,
+};
 
 const SPLITS = {
-  lenderMargin: 0.15,
-  platformProvision: 0.01,
-  platformRevenue: 0.17,
-  lenderPrincipal: 0.67,
+  lenderMargin: FIXED_AMOUNTS.lenderMargin / REPAYMENT_AMOUNT,
+  platformProvision: FIXED_AMOUNTS.platformProvision / REPAYMENT_AMOUNT,
+  platformRevenue: FIXED_AMOUNTS.platformRevenue / REPAYMENT_AMOUNT,
+  lenderPrincipal: FIXED_AMOUNTS.lenderPrincipal / REPAYMENT_AMOUNT,
 };
 
 export function distributeRepayment(amount) {
@@ -29,4 +42,4 @@ export function accumulateDistributions(distributions) {
   );
 }
 
-export { SPLITS };
+export { SPLITS, FIXED_AMOUNTS, REPAYMENT_AMOUNT };

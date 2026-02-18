@@ -35,17 +35,18 @@ Users can input, edit, and delete multiple lender investments with below attribu
 3. Transaction date
 4. Transaction amount
 
-### 2. Accept user input for repayment schedule and amount of every borrower
+### 2. Accept user input for repayment schedule of every borrower
 
 **Acceptance Criteria:**
+
+All borrowers have a fixed repayment amount of **133,000 IDR** and a fixed loan amount of **5,000,000 IDR**. These values are hardcoded and not editable.
 
 User can input, edit, and delete multiple borrower repayment schedules with below attributes:
 
 1. Borrower ID
 2. Repayment schedule: weekly / daily
 3. Repayment start date
-4. Repayment amount
-5. How many borrowers? (This is used to create multiple borrower at once. If users fill this in, borrower IDs will be automatically filled.)
+4. How many borrowers? (This is used to create multiple borrower at once. If users fill this in, borrower IDs will be automatically filled.)
 
 ### 3. ~~Accept user input for loan write off schedule~~ (Superseded by #24)
 
@@ -63,10 +64,12 @@ User can input, edit, and delete multiple borrower repayment schedules with belo
 
 **Acceptance Criteria:**
 
-- Lenders margin portion from repayment: **0.15**
-- Platform provision portion from repayment: **0.01**
-- Platform revenue portion from repayment: **0.17**
-- Lenders principal portion from repayment: **0.67**
+Each 133,000 IDR repayment is split into fixed amounts based on a 5,000,000 IDR loan repaid over 50 installments (133% of loan):
+
+- Lenders principal: **Rp 100,000** (base principal return per installment)
+- Lenders margin: **Rp 15,000** (15% of principal)
+- Platform margin: **Rp 17,000** (17% of principal)
+- Platform provision: **Rp 1,000** (1% of principal)
 
 ### 6. Calculate the total amount of outstanding payment in the fund
 
@@ -236,14 +239,9 @@ NAV after payout day:
 - The "Generate Graphs" button now only requires at least one investment and one borrower (write-offs are no longer a separate prerequisite).
 - Existing localStorage data migrates gracefully: old `writeOffs` arrays are ignored, and borrowers without `loanAmount` or `repaymentStopDate` receive default values.
 
-### 25. Loan amount field with default value
+### 25. ~~Loan amount field with default value~~ (Superseded by #33)
 
-**Acceptance Criteria:**
-
-- Each borrower has a **Loan Amount** field, defaulting to **5,000,000 IDR**.
-- The loan amount is editable in the borrower form and persisted with the borrower record.
-- The loan amount is used to compute the write-off outstanding amount and the 133% completion cap.
-- Bulk-created borrowers all share the same loan amount value from the form.
+*Loan amount is now hardcoded at 5,000,000 IDR and is no longer editable. See requirement #33.*
 
 ### 26. 133% loan completion logic
 
@@ -258,11 +256,11 @@ NAV after payout day:
 
 **Acceptance Criteria:**
 
-- The 4 repayment pool graphs include the portion percentage in their title labels:
-  - "Lenders Margin (15% of repayment)"
-  - "Lenders Principal (67% of repayment)"
-  - "Platform Margin (17% of repayment)"
-  - "Platform Provision (1% of repayment)"
+- The 4 repayment pool graphs include the fixed IDR amount per repayment in their title labels:
+  - "Lenders Margin (Rp 15,000 per repayment)"
+  - "Lenders Principal (Rp 100,000 per repayment)"
+  - "Platform Margin (Rp 17,000 per repayment)"
+  - "Platform Provision (Rp 1,000 per repayment)"
 
 ### 28. Indonesian locale number formatting in graphs
 
@@ -333,3 +331,26 @@ NAV after payout day:
 - A new **Profit Comparison** calculation table shows per lender per month:
   - Date, Lender ID, Units Owned, Total Units, NAV Payout, Avg Balance, Total Avg Balance, Avg Bal Payout, Total Margin, Difference, How to Calculate
 - The total payout per month is the same for both methods (just distributed differently among lenders).
+
+### 33. Fixed repayment and loan amounts for all borrowers
+
+**Acceptance Criteria:**
+
+- All borrowers have a **fixed repayment amount of 133,000 IDR** and a **fixed loan amount of 5,000,000 IDR**.
+- The repayment amount and loan amount input fields have been removed from the borrower form.
+- The borrower table no longer shows repayment or loan amount columns (since they're the same for all borrowers).
+- A label in the borrower section header shows the fixed values for reference.
+- The repayment distribution is now based on fixed amounts per 133,000 IDR repayment:
+  - Lender Principal: Rp 100,000 (base principal return)
+  - Lender Margin: Rp 15,000 (15% of principal)
+  - Platform Margin: Rp 17,000 (17% of principal)
+  - Platform Provision: Rp 1,000 (1% of principal)
+- Each borrower repays 50 installments of 133,000 (= 6,650,000 = 133% of 5,000,000 loan).
+
+### 34. Lenders principal graph reflects rebidding usage
+
+**Acceptance Criteria:**
+
+- The lenders principal graph now shows the **available** principal amount, which decreases by 5,000,000 IDR each time a rebidding loan is created.
+- Previously the graph only showed cumulative principal growing without reflecting the 5M deductions for rebidding.
+- The graph now visually shows: principal accumulates from repayments, then drops by 5M when a rebidding loan is triggered, making it clear how much principal is actually available in the pool.

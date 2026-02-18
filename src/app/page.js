@@ -28,7 +28,7 @@ export default function Home() {
               <span className="font-bold">1. Set Up Lenders</span> — In the Lender Investment table, add one or more lenders. Adjust the <em>investment amount</em> and <em>start date</em> for each. Try adding multiple lenders with different amounts to see how payouts are distributed proportionally based on units held.
             </div>
             <div>
-              <span className="font-bold">2. Set Up Borrowers</span> — In the Borrower Repayment table, add borrowers with different <em>loan amounts</em>, <em>weekly repayment values</em>, and <em>start dates</em>. More borrowers or higher repayments mean faster fund returns and more frequent rebidding.
+              <span className="font-bold">2. Set Up Borrowers</span> — In the Borrower Repayment table, add borrowers with <em>start dates</em> and <em>schedules</em>. All borrowers have a fixed loan amount of Rp 5,000,000 and repayment of Rp 133,000. More borrowers mean faster fund returns and more frequent rebidding.
             </div>
             <div>
               <span className="font-bold">3. Run the Simulation</span> — Click the <em>Run Simulation</em> button. The dashboard will show charts for AUM movement, NAV, payouts, and more.
@@ -37,7 +37,6 @@ export default function Home() {
               <span className="font-bold">4. Things to Experiment With</span>
               <ul className="list-disc ml-5 mt-1 space-y-1">
                 <li><strong>Large vs small investments</strong> — Compare a single 100M lender vs multiple smaller lenders to see how unit allocation affects payout distribution.</li>
-                <li><strong>Repayment speed</strong> — Increase weekly repayment amounts to see how faster borrower repayments accelerate rebidding and compound lender returns.</li>
                 <li><strong>Staggered timing</strong> — Set different start dates for lenders and borrowers to observe how late entries affect NAV and unit pricing.</li>
                 <li><strong>Multiple borrowers</strong> — Add several borrowers to see how a diversified loan book impacts the repayment pool and overall returns.</li>
               </ul>
@@ -57,7 +56,7 @@ export default function Home() {
         {tutorialOpen && (
           <div className="mt-3 space-y-2 text-sm text-blue-900">
             <div>
-              <span className="font-bold">Repayment Pool Split</span> — Each repayment is split into 4 pools: Lender Margin (15%), Lender Principal (67%), Platform Margin (17%), Platform Provision (1%).
+              <span className="font-bold">Repayment Pool Split</span> — Each 133,000 IDR repayment is split into 4 pools: Lender Principal (Rp 100,000), Lender Margin (Rp 15,000), Platform Margin (Rp 17,000), Platform Provision (Rp 1,000). The loan amount is 5,000,000 IDR, repaid over 50 installments (133% of the loan).
             </div>
             <div>
               <span className="font-bold">Rebidding (Loan Re-addition)</span> — Whenever accumulated Lender Principal reaches 5,000,000 IDR, a new rebidding loan is created (5M loan, 133K/week repayment). This can trigger multiple times as principal accumulates. Repayments from rebidding loans flow through the same 4-pool split, compounding returns over time.
@@ -74,18 +73,18 @@ export default function Home() {
             <div>
               <span className="font-bold">Write-Off Absorption Waterfall</span> — When a borrower defaults (stops repaying), the outstanding loan amount becomes a write-off at the 1st of the following month. The write-off is absorbed in this order:
               <ol className="list-decimal ml-5 mt-1 space-y-1">
-                <li><strong>Lender Margin (15%)</strong> — absorbs first from the monthly accumulated margin pool.</li>
-                <li><strong>Platform Provision (1%)</strong> — absorbs next from the cumulative provision pool.</li>
-                <li><strong>Platform Revenue (17%)</strong> — absorbs next from the cumulative revenue pool.</li>
-                <li><strong>Lender Principal (67%)</strong> — absorbs last from the cumulative principal pool.</li>
+                <li><strong>Lender Margin (Rp 15,000/repayment)</strong> — absorbs first from the monthly accumulated margin pool.</li>
+                <li><strong>Platform Provision (Rp 1,000/repayment)</strong> — absorbs next from the cumulative provision pool.</li>
+                <li><strong>Platform Margin (Rp 17,000/repayment)</strong> — absorbs next from the cumulative revenue pool.</li>
+                <li><strong>Lender Principal (Rp 100,000/repayment)</strong> — absorbs last from the cumulative principal pool.</li>
               </ol>
               <div className="mt-1">If all four pools are exhausted and a remainder still exists, that <strong>unabsorbed</strong> amount permanently reduces the fund&apos;s AUM. This is visible in the AUM Movement table.</div>
             </div>
             <div>
               <span className="font-bold">AUM Recovery Mechanism</span> — When an unabsorbed write-off reduces AUM, a recovery mode activates to gradually restore the deficit. During recovery:
               <ul className="list-disc ml-5 mt-1 space-y-1">
-                <li><strong>83% of each repayment</strong> (Lender Margin 15% + Lender Principal 67% + Platform Provision 1%) is funneled back into AUM to close the deficit.</li>
-                <li><strong>Platform Revenue (17%)</strong> always flows normally — the platform is always paid regardless of recovery mode.</li>
+                <li><strong>Rp 116,000 of each Rp 133,000 repayment</strong> (Lender Margin Rp 15,000 + Lender Principal Rp 100,000 + Platform Provision Rp 1,000) is funneled back into AUM to close the deficit.</li>
+                <li><strong>Platform Margin (Rp 17,000)</strong> always flows normally — the platform is always paid regardless of recovery mode.</li>
                 <li><strong>Lender payouts are paused</strong> — margin is funneled to AUM recovery instead of being distributed as payouts.</li>
                 <li><strong>Rebidding is paused</strong> — no new rebidding loans are created while the deficit exists, since principal is being funneled to recovery.</li>
                 <li><strong>Immediate resume</strong> — as soon as the deficit is fully recovered (reaches 0), normal distribution resumes. If the deficit clears mid-repayment, the remainder is proportionally distributed to pools.</li>

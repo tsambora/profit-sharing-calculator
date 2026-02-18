@@ -154,6 +154,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
   };
   let totalRebiddingRepaid = 0;
   let rebiddingPrincipalAccumulator = 0;
+  let totalRebiddingFromPrincipal = 0; // Track total principal used for rebidding loans
 
   // AUM Recovery state
   let writeOffDeficit = 0;
@@ -339,6 +340,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         totalRepaid: 0,
       });
       rebiddingPrincipalAccumulator -= 5000000;
+      totalRebiddingFromPrincipal += 5000000;
     }
 
     // 3. Process write-offs for today (accumulate for end of month)
@@ -356,6 +358,21 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
     const lenderSnapshots = {};
     for (const [lid, state] of Object.entries(lenderState)) {
       lenderSnapshots[lid] = { ...state };
+    }
+
+    // Compute available principal for display, splitting rebidding deductions proportionally
+    // between original and rebidding pools based on their contribution
+    const totalCumulativePrincipal = cumulativePools.lenderPrincipal;
+    const rebiddingCumulativePrincipal = cumulativeRebiddingPools.lenderPrincipal;
+    const originalCumulativePrincipal = totalCumulativePrincipal - rebiddingCumulativePrincipal;
+    const availablePrincipal = totalCumulativePrincipal - totalRebiddingFromPrincipal;
+    let displayOriginalPrincipal, displayRebiddingPrincipal;
+    if (totalCumulativePrincipal > 0) {
+      displayOriginalPrincipal = availablePrincipal * (originalCumulativePrincipal / totalCumulativePrincipal);
+      displayRebiddingPrincipal = availablePrincipal * (rebiddingCumulativePrincipal / totalCumulativePrincipal);
+    } else {
+      displayOriginalPrincipal = 0;
+      displayRebiddingPrincipal = 0;
     }
 
     dailySnapshots.push({
@@ -379,13 +396,13 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         lenderMargin: monthlyPools.lenderMargin,
         platformProvision: cumulativePools.platformProvision,
         platformRevenue: cumulativePools.platformRevenue,
-        lenderPrincipal: cumulativePools.lenderPrincipal,
+        lenderPrincipal: displayOriginalPrincipal,
       },
       rebiddingPools: {
         lenderMargin: monthlyRebiddingPools.lenderMargin,
         platformProvision: cumulativeRebiddingPools.platformProvision,
         platformRevenue: cumulativeRebiddingPools.platformRevenue,
-        lenderPrincipal: cumulativeRebiddingPools.lenderPrincipal,
+        lenderPrincipal: displayRebiddingPrincipal,
       },
       lenders: lenderSnapshots,
     });

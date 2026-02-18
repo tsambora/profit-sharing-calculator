@@ -4,6 +4,9 @@ import { useState } from "react";
 import useSimulationStore from "@/store/simulationStore";
 import { computeWriteOffDate, computeWriteOffOutstanding } from "@/engine/borrowerUtils";
 
+const FIXED_REPAYMENT = 133000;
+const FIXED_LOAN_AMOUNT = 5000000;
+
 export default function BorrowerRepaymentTable() {
   const { tabs, activeTabId, addBorrower, updateBorrower, removeBorrower, clearBorrowers } =
     useSimulationStore();
@@ -13,8 +16,6 @@ export default function BorrowerRepaymentTable() {
     borrowerId: "",
     schedule: "weekly",
     startDate: "",
-    amount: "",
-    loanAmount: "5000000",
     repaymentStopDate: "",
     count: "",
   });
@@ -24,7 +25,7 @@ export default function BorrowerRepaymentTable() {
     const count = Number(form.count) || 1;
 
     if (count > 1) {
-      if (!form.startDate || !form.amount) return;
+      if (!form.startDate) return;
       // Find the highest existing B-### number to continue from
       let maxNum = 0;
       for (const b of borrowers) {
@@ -37,38 +38,38 @@ export default function BorrowerRepaymentTable() {
           borrowerId: id,
           schedule: form.schedule,
           startDate: form.startDate,
-          amount: Number(form.amount),
-          loanAmount: Number(form.loanAmount) || 5000000,
+          amount: FIXED_REPAYMENT,
+          loanAmount: FIXED_LOAN_AMOUNT,
           repaymentStopDate: form.repaymentStopDate || "",
         });
       }
     } else {
-      if (!form.borrowerId || !form.startDate || !form.amount) return;
+      if (!form.borrowerId || !form.startDate) return;
       addBorrower({
         borrowerId: form.borrowerId,
         schedule: form.schedule,
         startDate: form.startDate,
-        amount: Number(form.amount),
-        loanAmount: Number(form.loanAmount) || 5000000,
+        amount: FIXED_REPAYMENT,
+        loanAmount: FIXED_LOAN_AMOUNT,
         repaymentStopDate: form.repaymentStopDate || "",
       });
     }
 
-    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", loanAmount: "5000000", repaymentStopDate: "", count: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", repaymentStopDate: "", count: "" });
   };
 
   const handleUpdate = () => {
-    if (!form.borrowerId || !form.startDate || !form.amount) return;
+    if (!form.borrowerId || !form.startDate) return;
     updateBorrower(editingId, {
       borrowerId: form.borrowerId,
       schedule: form.schedule,
       startDate: form.startDate,
-      amount: Number(form.amount),
-      loanAmount: Number(form.loanAmount) || 5000000,
+      amount: FIXED_REPAYMENT,
+      loanAmount: FIXED_LOAN_AMOUNT,
       repaymentStopDate: form.repaymentStopDate || "",
     });
     setEditingId(null);
-    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", loanAmount: "5000000", repaymentStopDate: "", count: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", repaymentStopDate: "", count: "" });
   };
 
   const startEdit = (b) => {
@@ -77,8 +78,6 @@ export default function BorrowerRepaymentTable() {
       borrowerId: b.borrowerId,
       schedule: b.schedule,
       startDate: b.startDate || "",
-      amount: String(b.amount),
-      loanAmount: String(b.loanAmount || 5000000),
       repaymentStopDate: b.repaymentStopDate || "",
       count: "",
     });
@@ -86,20 +85,20 @@ export default function BorrowerRepaymentTable() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ borrowerId: "", schedule: "weekly", startDate: "", amount: "", loanAmount: "5000000", repaymentStopDate: "", count: "" });
+    setForm({ borrowerId: "", schedule: "weekly", startDate: "", repaymentStopDate: "", count: "" });
   };
 
   const bulkMode = !editingId && Number(form.count) > 1;
 
   // Compute write-off preview for the form
   const formWriteOffDate = form.repaymentStopDate ? computeWriteOffDate(form.repaymentStopDate) : null;
-  const formOutstanding = (form.repaymentStopDate && form.startDate && form.amount && form.loanAmount)
+  const formOutstanding = (form.repaymentStopDate && form.startDate)
     ? computeWriteOffOutstanding(
         form.startDate,
         form.schedule,
         form.repaymentStopDate,
-        Number(form.amount),
-        Number(form.loanAmount) || 5000000
+        FIXED_REPAYMENT,
+        FIXED_LOAN_AMOUNT
       )
     : null;
 
@@ -107,6 +106,9 @@ export default function BorrowerRepaymentTable() {
     <div className="bg-white rounded-lg shadow p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold">Borrower Repayments</h3>
+        <div className="text-xs text-gray-500">
+          Fixed: Rp {FIXED_REPAYMENT.toLocaleString()} repayment / Rp {FIXED_LOAN_AMOUNT.toLocaleString()} loan
+        </div>
         {borrowers.length > 0 && (
           <button
             onClick={clearBorrowers}
@@ -143,23 +145,6 @@ export default function BorrowerRepaymentTable() {
             onChange={(e) => setForm({ ...form, startDate: e.target.value })}
           />
         </div>
-        <input
-          type="number"
-          placeholder="Repayment Amount"
-          className="border rounded px-2 py-1 text-sm"
-          value={form.amount}
-          onChange={(e) => setForm({ ...form, amount: e.target.value })}
-        />
-      </div>
-
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        <input
-          type="number"
-          placeholder="Loan Amount (default 5,000,000)"
-          className="border rounded px-2 py-1 text-sm"
-          value={form.loanAmount}
-          onChange={(e) => setForm({ ...form, loanAmount: e.target.value })}
-        />
         <div>
           <label className="block text-xs text-gray-500 mb-0.5">Repayment Stop Date</label>
           <input
@@ -169,6 +154,9 @@ export default function BorrowerRepaymentTable() {
             onChange={(e) => setForm({ ...form, repaymentStopDate: e.target.value })}
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 mb-3">
         {form.repaymentStopDate && (
           <div className="text-xs text-gray-500 flex flex-col justify-center">
             <div>Write-off: <span className="font-medium text-gray-700">{formWriteOffDate}</span></div>
@@ -176,6 +164,8 @@ export default function BorrowerRepaymentTable() {
           </div>
         )}
         {!form.repaymentStopDate && <div />}
+        <div />
+        <div />
         <div className="flex gap-1 items-end">
           {!editingId && (
             <input
@@ -221,8 +211,6 @@ export default function BorrowerRepaymentTable() {
                 <th className="text-left py-2 px-2">Borrower ID</th>
                 <th className="text-left py-2 px-2">Schedule</th>
                 <th className="text-left py-2 px-2">Start Date</th>
-                <th className="text-right py-2 px-2">Repayment</th>
-                <th className="text-right py-2 px-2">Loan Amount</th>
                 <th className="text-left py-2 px-2">Stop Date</th>
                 <th className="text-left py-2 px-2">Write-Off Date</th>
                 <th className="text-right py-2 px-2">Outstanding</th>
@@ -233,7 +221,7 @@ export default function BorrowerRepaymentTable() {
               {borrowers.map((b) => {
                 const woDate = b.repaymentStopDate ? computeWriteOffDate(b.repaymentStopDate) : null;
                 const outstanding = b.repaymentStopDate
-                  ? computeWriteOffOutstanding(b.startDate, b.schedule, b.repaymentStopDate, b.amount, b.loanAmount || 5000000)
+                  ? computeWriteOffOutstanding(b.startDate, b.schedule, b.repaymentStopDate, FIXED_REPAYMENT, FIXED_LOAN_AMOUNT)
                   : null;
                 return (
                   <tr key={b.id} className="border-b hover:bg-gray-50">
@@ -244,12 +232,6 @@ export default function BorrowerRepaymentTable() {
                       </span>
                     </td>
                     <td className="py-2 px-2">{b.startDate}</td>
-                    <td className="py-2 px-2 text-right">
-                      {b.amount.toLocaleString()}
-                    </td>
-                    <td className="py-2 px-2 text-right">
-                      {(b.loanAmount || 5000000).toLocaleString()}
-                    </td>
                     <td className="py-2 px-2 text-gray-500">
                       {b.repaymentStopDate || "—"}
                     </td>
