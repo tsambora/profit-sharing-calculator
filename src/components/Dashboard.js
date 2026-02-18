@@ -307,6 +307,7 @@ export default function Dashboard() {
               fillColor="#dbeafe"
               secondDataKey="rebiddingLenderMargin"
               secondName="Rebidding Margin"
+              noSample
             />
             <RepaymentPoolChart
               data={results.poolsData}
@@ -316,6 +317,7 @@ export default function Dashboard() {
               fillColor="#dcfce7"
               secondDataKey="rebiddingLenderPrincipal"
               secondName="Rebidding Principal"
+              noSample
             />
             <RepaymentPoolChart
               data={results.poolsData}
@@ -325,6 +327,7 @@ export default function Dashboard() {
               fillColor="#fef9c3"
               secondDataKey="rebiddingPlatformRevenue"
               secondName="Rebidding Platform Margin"
+              noSample
             />
             <RepaymentPoolChart
               data={results.poolsData}
@@ -334,6 +337,7 @@ export default function Dashboard() {
               fillColor="#fee2e2"
               secondDataKey="rebiddingPlatformProvision"
               secondName="Rebidding Provision"
+              noSample
             />
             <NavChart data={results.navData} />
             <AumChart data={results.aumData} />

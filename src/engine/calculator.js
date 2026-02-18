@@ -155,6 +155,9 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
   let totalRebiddingRepaid = 0;
   let rebiddingPrincipalAccumulator = 0;
   let totalRebiddingFromPrincipal = 0; // Track total principal used for rebidding loans
+  // Track accumulator split by source for accurate display
+  let accumulatorFromOriginal = 0;
+  let accumulatorFromRebidding = 0;
 
   // AUM Recovery state
   let writeOffDeficit = 0;
@@ -282,6 +285,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         cumulativePools.platformRevenue += actual.platformRevenue;
         cumulativePools.lenderPrincipal += actual.lenderPrincipal;
         rebiddingPrincipalAccumulator += actual.lenderPrincipal;
+        accumulatorFromOriginal += actual.lenderPrincipal;
         todayRepaymentTotal += b.amount;
         totalRepaid += b.amount;
         borrowerCumulativeRepaid[b.borrowerId] = cumulative + b.amount;
@@ -312,6 +316,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       cumulativePools.platformRevenue += actual.platformRevenue;
       cumulativePools.lenderPrincipal += actual.lenderPrincipal;
       rebiddingPrincipalAccumulator += actual.lenderPrincipal;
+      accumulatorFromRebidding += actual.lenderPrincipal;
 
       // Also track in rebidding-specific pools (for display)
       monthlyRebiddingPools.lenderMargin += actual.lenderMargin;
@@ -339,6 +344,11 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         repaymentDay: nextDay.getDay(),
         totalRepaid: 0,
       });
+      // Deduct 5M from accumulators: original first, then rebidding (waterfall)
+      // This keeps values in clean multiples of 100,000
+      const deductFromOriginal = Math.min(5000000, accumulatorFromOriginal);
+      accumulatorFromOriginal -= deductFromOriginal;
+      accumulatorFromRebidding -= (5000000 - deductFromOriginal);
       rebiddingPrincipalAccumulator -= 5000000;
       totalRebiddingFromPrincipal += 5000000;
     }
@@ -360,22 +370,10 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       lenderSnapshots[lid] = { ...state };
     }
 
-    // Compute available principal for display, splitting rebidding deductions proportionally
-    // between original and rebidding pools based on their contribution.
-    // Floor at 0: write-off absorption + rebidding can exceed accumulated principal,
-    // but available principal can't go negative (excess is handled by unabsorbed write-off → AUM).
-    const totalCumulativePrincipal = cumulativePools.lenderPrincipal;
-    const rebiddingCumulativePrincipal = cumulativeRebiddingPools.lenderPrincipal;
-    const originalCumulativePrincipal = totalCumulativePrincipal - rebiddingCumulativePrincipal;
-    const availablePrincipal = Math.max(0, totalCumulativePrincipal - totalRebiddingFromPrincipal);
-    let displayOriginalPrincipal, displayRebiddingPrincipal;
-    if (totalCumulativePrincipal > 0) {
-      displayOriginalPrincipal = availablePrincipal * (originalCumulativePrincipal / totalCumulativePrincipal);
-      displayRebiddingPrincipal = availablePrincipal * (rebiddingCumulativePrincipal / totalCumulativePrincipal);
-    } else {
-      displayOriginalPrincipal = 0;
-      displayRebiddingPrincipal = 0;
-    }
+    // Display available principal directly from split accumulators.
+    // These track actual principal from each source, reduced by rebidding deductions and write-offs.
+    const displayOriginalPrincipal = Math.max(0, accumulatorFromOriginal);
+    const displayRebiddingPrincipal = Math.max(0, accumulatorFromRebidding);
 
     dailySnapshots.push({
       date: dateStr,
@@ -427,6 +425,13 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         // Adjust rebidding accumulator for principal absorbed by write-off
         const principalAbsorbedByWriteOff = preAbsorption.lenderPrincipal - monthlyPools.lenderPrincipal;
         if (principalAbsorbedByWriteOff > 0) {
+          // Deduct proportionally from original and rebidding accumulators
+          const totalAccum = accumulatorFromOriginal + accumulatorFromRebidding;
+          if (totalAccum > 0) {
+            const origShare = accumulatorFromOriginal / totalAccum;
+            accumulatorFromOriginal = Math.max(0, accumulatorFromOriginal - principalAbsorbedByWriteOff * origShare);
+            accumulatorFromRebidding = Math.max(0, accumulatorFromRebidding - principalAbsorbedByWriteOff * (1 - origShare));
+          }
           rebiddingPrincipalAccumulator = Math.max(0, rebiddingPrincipalAccumulator - principalAbsorbedByWriteOff);
         }
 
