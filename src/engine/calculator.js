@@ -361,11 +361,13 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
     }
 
     // Compute available principal for display, splitting rebidding deductions proportionally
-    // between original and rebidding pools based on their contribution
+    // between original and rebidding pools based on their contribution.
+    // Floor at 0: write-off absorption + rebidding can exceed accumulated principal,
+    // but available principal can't go negative (excess is handled by unabsorbed write-off → AUM).
     const totalCumulativePrincipal = cumulativePools.lenderPrincipal;
     const rebiddingCumulativePrincipal = cumulativeRebiddingPools.lenderPrincipal;
     const originalCumulativePrincipal = totalCumulativePrincipal - rebiddingCumulativePrincipal;
-    const availablePrincipal = totalCumulativePrincipal - totalRebiddingFromPrincipal;
+    const availablePrincipal = Math.max(0, totalCumulativePrincipal - totalRebiddingFromPrincipal);
     let displayOriginalPrincipal, displayRebiddingPrincipal;
     if (totalCumulativePrincipal > 0) {
       displayOriginalPrincipal = availablePrincipal * (originalCumulativePrincipal / totalCumulativePrincipal);
