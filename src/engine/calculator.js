@@ -412,18 +412,29 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       // Apply write-off absorption
       let writeOffResult = null;
       if (monthlyWriteOffAmount > 0) {
-        // Track pre-absorption pool values to compute how much each cumulative pool lost
-        const preAbsorption = { ...monthlyPools };
-        writeOffResult = absorbWriteOff(monthlyPools, monthlyWriteOffAmount);
-        monthlyPools = writeOffResult.pools;
+        // Absorb from full available pool balances:
+        // - lenderMargin: monthly only (resets each month, distributed to lenders)
+        // - provision/revenue/principal: cumulative (never distributed, full balance is available)
+        const availablePools = {
+          lenderMargin: monthlyPools.lenderMargin,
+          platformProvision: cumulativePools.platformProvision,
+          platformRevenue: cumulativePools.platformRevenue,
+          lenderPrincipal: cumulativePools.lenderPrincipal,
+        };
+        const prePrincipal = cumulativePools.lenderPrincipal;
 
-        // Subtract write-off losses from cumulative pools
-        cumulativePools.platformProvision -= (preAbsorption.platformProvision - monthlyPools.platformProvision);
-        cumulativePools.platformRevenue -= (preAbsorption.platformRevenue - monthlyPools.platformRevenue);
-        cumulativePools.lenderPrincipal -= (preAbsorption.lenderPrincipal - monthlyPools.lenderPrincipal);
+        writeOffResult = absorbWriteOff(availablePools, monthlyWriteOffAmount);
+
+        // Update monthly margin for payout calculation
+        monthlyPools.lenderMargin = writeOffResult.pools.lenderMargin;
+
+        // Update cumulative pools directly from absorption result
+        cumulativePools.platformProvision = writeOffResult.pools.platformProvision;
+        cumulativePools.platformRevenue = writeOffResult.pools.platformRevenue;
+        cumulativePools.lenderPrincipal = writeOffResult.pools.lenderPrincipal;
 
         // Adjust rebidding accumulator for principal absorbed by write-off
-        const principalAbsorbedByWriteOff = preAbsorption.lenderPrincipal - monthlyPools.lenderPrincipal;
+        const principalAbsorbedByWriteOff = prePrincipal - writeOffResult.pools.lenderPrincipal;
         if (principalAbsorbedByWriteOff > 0) {
           // Deduct proportionally from original and rebidding accumulators
           const totalAccum = accumulatorFromOriginal + accumulatorFromRebidding;
