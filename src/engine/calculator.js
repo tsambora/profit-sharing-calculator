@@ -823,6 +823,12 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState, navMod
     dailyRebiddingRepayment: Math.round(s.dailyRebiddingRepayment),
   }));
 
+  // Daily Margin Rebidding Repayment Chart (Mode 2 only)
+  const dailyMarginRebiddingRepaymentData = dailySnapshots.map((s) => ({
+    date: s.date,
+    dailyMarginRebiddingRepayment: Math.round(s.dailyMarginRebiddingRepayment),
+  }));
+
   // Total Repayment Chart: cumulative repayment over time
   const totalRepaymentData = dailySnapshots.map((s) => ({
     date: s.date,
@@ -946,6 +952,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState, navMod
     poolsData,
     dailyRepaymentData,
     dailyRebiddingRepaymentData,
+    dailyMarginRebiddingRepaymentData,
     totalRepaymentData,
     marginRebiddingAccumulatorData,
     tableData,

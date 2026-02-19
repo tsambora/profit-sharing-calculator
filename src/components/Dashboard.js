@@ -314,6 +314,16 @@ export default function Dashboard() {
               fillColor="#fed7aa"
               noSample
             />
+            {navMode === 2 && (
+              <RepaymentPoolChart
+                data={results.dailyMarginRebiddingRepaymentData}
+                dataKey="dailyMarginRebiddingRepayment"
+                title="Repayment from Margin Rebidding"
+                strokeColor="#9333ea"
+                fillColor="#f3e8ff"
+                noSample
+              />
+            )}
             <RepaymentPoolChart
               data={results.totalRepaymentData}
               dataKey="totalRepaid"
