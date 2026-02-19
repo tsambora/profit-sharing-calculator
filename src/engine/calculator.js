@@ -159,6 +159,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
   // Track accumulator split by source for accurate display
   let accumulatorFromOriginal = 0;
   let accumulatorFromRebidding = 0;
+  let accumulatorFromMarginRebidding = 0;
 
   // Mode 2: Margin Rebidding state
   let marginRebiddingAccumulator = 0;
@@ -389,11 +390,15 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
         repaymentDay: nextDay.getDay(),
         totalRepaid: 0,
       });
-      // Deduct 5M from accumulators: original first, then rebidding (waterfall)
-      // This keeps values in clean multiples of 100,000
-      const deductFromOriginal = Math.min(5000000, accumulatorFromOriginal);
+      // Deduct 5M from accumulators: original first, then rebidding, then margin rebidding (waterfall)
+      let remaining5M = 5000000;
+      const deductFromOriginal = Math.min(remaining5M, accumulatorFromOriginal);
       accumulatorFromOriginal -= deductFromOriginal;
-      accumulatorFromRebidding -= (5000000 - deductFromOriginal);
+      remaining5M -= deductFromOriginal;
+      const deductFromRebidding = Math.min(remaining5M, accumulatorFromRebidding);
+      accumulatorFromRebidding -= deductFromRebidding;
+      remaining5M -= deductFromRebidding;
+      accumulatorFromMarginRebidding -= remaining5M;
       rebiddingPrincipalAccumulator -= 5000000;
       totalRebiddingFromPrincipal += 5000000;
     }
@@ -429,7 +434,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
 
         // Principal from margin-rebidding loans feeds into principal rebidding accumulator
         rebiddingPrincipalAccumulator += actual.lenderPrincipal;
-        accumulatorFromRebidding += actual.lenderPrincipal;
+        accumulatorFromMarginRebidding += actual.lenderPrincipal;
 
         // Track in margin-rebidding-specific pools (for display)
         monthlyMarginRebiddingPools.lenderMargin += marginToPayout;
@@ -529,7 +534,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
         lenderMargin: monthlyMarginRebiddingPools.lenderMargin,
         platformProvision: cumulativeMarginRebiddingPools.platformProvision,
         platformRevenue: cumulativeMarginRebiddingPools.platformRevenue,
-        lenderPrincipal: cumulativeMarginRebiddingPools.lenderPrincipal,
+        lenderPrincipal: Math.max(0, accumulatorFromMarginRebidding),
       },
       lenders: lenderSnapshots,
     });
@@ -588,12 +593,15 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
         // Adjust rebidding accumulator for principal absorbed by write-off
         const principalAbsorbedByWriteOff = prePrincipal - writeOffResult.pools.lenderPrincipal;
         if (principalAbsorbedByWriteOff > 0) {
-          // Deduct proportionally from original and rebidding accumulators
-          const totalAccum = accumulatorFromOriginal + accumulatorFromRebidding;
+          // Deduct proportionally from all source accumulators
+          const totalAccum = accumulatorFromOriginal + accumulatorFromRebidding + accumulatorFromMarginRebidding;
           if (totalAccum > 0) {
             const origShare = accumulatorFromOriginal / totalAccum;
+            const rebShare = accumulatorFromRebidding / totalAccum;
+            const marginRebShare = accumulatorFromMarginRebidding / totalAccum;
             accumulatorFromOriginal = Math.max(0, accumulatorFromOriginal - principalAbsorbedByWriteOff * origShare);
-            accumulatorFromRebidding = Math.max(0, accumulatorFromRebidding - principalAbsorbedByWriteOff * (1 - origShare));
+            accumulatorFromRebidding = Math.max(0, accumulatorFromRebidding - principalAbsorbedByWriteOff * rebShare);
+            accumulatorFromMarginRebidding = Math.max(0, accumulatorFromMarginRebidding - principalAbsorbedByWriteOff * marginRebShare);
           }
           rebiddingPrincipalAccumulator = Math.max(0, rebiddingPrincipalAccumulator - principalAbsorbedByWriteOff);
         }
