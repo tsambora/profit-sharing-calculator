@@ -282,7 +282,7 @@ NAV after payout day:
   5. **NAV Movement** — Date, NAV, Accumulated Margin, Total AUM, Total Units, formula showing `(margin + AUM) / units`.
   6. **AUM Movement** — Date, AUM, Total Invested, Total Repaid, formula describing what changed.
   7. **Monthly Payout per Lender** — Date, Lender ID, Units Owned, Total Units, Total Margin, Payout, formula showing `(units / totalUnits) × totalMargin = payout`.
-  8. **Return Rate per Lender** — Date, Lender ID, Total Payout, Total Invested, Return Rate, formula showing `(totalPayout / totalInvested) × 100 = rate%`.
+  8. **Accumulated Return Rate per Lender** — Date, Lender ID, Total Payout, Total Invested, Return Rate, formula showing `(totalPayout / totalInvested) × 100 = rate%`.
 - Tables only show rows where activity occurred (repayment > 0, or investment/AUM change) to keep them manageable.
 - Each table is scrollable with a max height and has a sticky header row.
 - Numbers are formatted with Indonesian locale (dot thousand separators).
@@ -378,3 +378,11 @@ NAV after payout day:
 - **NAV stays smooth in Option 1:** Because margin is immediately counted as AUM (which persists across months) rather than sitting in the payout pool (which resets monthly), there is no sawtooth pattern.
 - Changing the NAV mode or rebidding percentage clears all tab results (requires re-running simulation).
 - Both settings are persisted to localStorage with migration for existing users (defaults to Option 1, 50%).
+
+### 36. Monthly Return Rate per Lender
+
+**Acceptance Criteria:**
+
+- A new **Monthly Return Rate per Lender (%)** line chart is added next to the Monthly Payout chart, showing each lender's monthly percentage gain: `(monthlyPayout / totalInvested) × 100`.
+- The existing return rate chart has been renamed from "Return Rate per Lender (%)" to **"Accumulated Return Rate per Lender (%)"** to clarify it shows cumulative returns, not monthly.
+- The corresponding calculation table has also been renamed to "Accumulated Return Rate per Lender".
