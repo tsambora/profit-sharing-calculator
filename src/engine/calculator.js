@@ -742,6 +742,18 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState, navMod
     return row;
   });
 
+  // Monthly Return Rate Chart: monthly % gain per lender
+  const monthlyReturnRateData = monthlyPayouts.map((mp) => {
+    const row = { date: mp.date };
+    for (const p of mp.payouts) {
+      const invested = finalLenderState[p.lenderId]?.totalInvested || 0;
+      row[p.lenderId] = invested > 0
+        ? Math.round((p.payout / invested) * 10000) / 100
+        : 0;
+    }
+    return row;
+  });
+
   // Return Rate Chart: cumulative return rate per lender
   const returnRateData = dailySnapshots
     .filter((_, i) => i === dailySnapshots.length - 1 || dailySnapshots[i].navAfterPayout !== undefined)
@@ -944,6 +956,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState, navMod
     navData,
     repaymentData,
     payoutData,
+    monthlyReturnRateData,
     returnRateData,
     principalReturnedData,
     navUnitsData,

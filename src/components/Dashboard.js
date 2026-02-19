@@ -397,6 +397,11 @@ export default function Dashboard() {
             <AumChart data={results.aumData} navMode={navMode} />
             <PayoutChart data={results.payoutData} lenderIds={results.lenderIds} />
             <ReturnRateChart
+              data={results.monthlyReturnRateData}
+              lenderIds={results.allLenderIds}
+              title="Monthly Return Rate per Lender (%)"
+            />
+            <ReturnRateChart
               data={results.returnRateData}
               lenderIds={results.allLenderIds}
             />
@@ -458,7 +463,7 @@ export default function Dashboard() {
                   data={results.payoutTableData}
                 />
                 <CalculationTable
-                  title="Return Rate per Lender"
+                  title="Accumulated Return Rate per Lender"
                   columns={returnRateColumns}
                   data={results.returnRateTableData}
                 />
