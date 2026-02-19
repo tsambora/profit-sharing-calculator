@@ -322,6 +322,8 @@ export default function Dashboard() {
               fillColor="#ccfbf1"
               secondDataKey="totalRebiddingRepaid"
               secondName="Repayment from Rebidding"
+              thirdDataKey={navMode === 2 ? "totalMarginRebiddingRepaid" : undefined}
+              thirdName="Repayment from Margin Rebidding"
             />
             <RepaymentPoolChart
               data={results.poolsData}

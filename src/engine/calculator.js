@@ -509,6 +509,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
       dailyRebiddingRepayment: todayRebiddingRepaymentTotal,
       dailyMarginRebiddingRepayment: todayMarginRebiddingRepaymentTotal,
       totalRebiddingRepaid,
+      totalMarginRebiddingRepaid,
       outstandingAmount: totalInvested - totalRepaid,
       accumulatedMargin: navMode === 2 ? marginRebiddingAccumulator : monthlyPools.lenderMargin,
       marginRebiddingAccumulator,
@@ -827,6 +828,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState, navMod
     date: s.date,
     totalRepaid: Math.round(s.totalRepaid),
     totalRebiddingRepaid: Math.round(s.totalRebiddingRepaid),
+    totalMarginRebiddingRepaid: Math.round(s.totalMarginRebiddingRepaid),
   }));
 
   // Payout table data: one row per lender per payout month
