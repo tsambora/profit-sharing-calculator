@@ -5,6 +5,7 @@ import {
   calculateUnitsForInvestment,
   calculateUnitsForWithdrawal,
   calculateDailyNav,
+  calculateDailyNavMode2,
   calculateNavAfterPayout,
 } from "./navCalculator";
 import { calculateLenderPayouts } from "./payoutCalculator";
@@ -60,7 +61,7 @@ function buildRepaymentSchedule(borrowers, startDate, endDate) {
 }
 
 // Main simulation function
-export function runSimulation(investments, borrowers, tenorMonths = 12) {
+export function runSimulation(investments, borrowers, tenorMonths = 12, navMode = 1, marginRebiddingPct = 50) {
   // Find date range
   const investmentDates = investments.map((i) => new Date(i.date));
   if (investmentDates.length === 0) return null;
@@ -159,6 +160,25 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
   let accumulatorFromOriginal = 0;
   let accumulatorFromRebidding = 0;
 
+  // Mode 2: Margin Rebidding state
+  let marginRebiddingAccumulator = 0;
+  let aumFromMarginRebidding = 0;
+  let aumFromInvestment = 0;
+  const marginRebiddingLoans = [];
+  let monthlyMarginRebiddingPools = {
+    lenderMargin: 0,
+    platformProvision: 0,
+    platformRevenue: 0,
+    lenderPrincipal: 0,
+  };
+  let cumulativeMarginRebiddingPools = {
+    lenderMargin: 0,
+    platformProvision: 0,
+    platformRevenue: 0,
+    lenderPrincipal: 0,
+  };
+  let totalMarginRebiddingRepaid = 0;
+
   // AUM Recovery state
   let writeOffDeficit = 0;
   let totalRecovered = 0;
@@ -185,6 +205,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
     if (recoveryPortion <= writeOffDeficit) {
       // Full 83% goes to recovery
       totalAum += recoveryPortion;
+      aumFromInvestment += recoveryPortion;
       writeOffDeficit -= recoveryPortion;
       totalRecovered += recoveryPortion;
       monthlyRecoveryFunneled += recoveryPortion;
@@ -200,6 +221,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
     // Deficit clears mid-repayment: funnel only what's needed, remainder to pools proportionally
     const remainder = recoveryPortion - writeOffDeficit;
     totalAum += writeOffDeficit;
+    aumFromInvestment += writeOffDeficit;
     totalRecovered += writeOffDeficit;
     monthlyRecoveryFunneled += writeOffDeficit;
     writeOffDeficit = 0;
@@ -243,6 +265,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         lenderState[inv.lenderId].totalInvested += inv.amount;
         totalUnits += units;
         totalAum += inv.amount;
+        aumFromInvestment += inv.amount;
         totalInvested += inv.amount;
         // Track balance for avg balance calculation
         lenderBalances[inv.lenderId] = (lenderBalances[inv.lenderId] || 0) + inv.amount;
@@ -254,6 +277,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         totalUnits -= actualUnits;
         const withdrawAmount = actualUnits * nav;
         totalAum -= withdrawAmount;
+        aumFromInvestment -= withdrawAmount;
         totalWithdrawn += withdrawAmount;
         // Track balance for avg balance calculation
         lenderBalances[inv.lenderId] = Math.max(0, (lenderBalances[inv.lenderId] || 0) - inv.amount);
@@ -277,7 +301,18 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       if (schedule.includes(dateStr)) {
         const dist = distributeRepayment(b.amount);
         const actual = processRepaymentDistribution(dist);
-        monthlyPools.lenderMargin += actual.lenderMargin;
+
+        // Mode 2: split margin between payout and rebidding accumulator
+        let marginToPayout = actual.lenderMargin;
+        if (navMode === 2) {
+          const rebiddingPortion = actual.lenderMargin * (marginRebiddingPct / 100);
+          marginRebiddingAccumulator += rebiddingPortion;
+          totalAum += rebiddingPortion;
+          aumFromMarginRebidding += rebiddingPortion;
+          marginToPayout = actual.lenderMargin - rebiddingPortion;
+        }
+
+        monthlyPools.lenderMargin += marginToPayout;
         monthlyPools.platformProvision += actual.platformProvision;
         monthlyPools.platformRevenue += actual.platformRevenue;
         monthlyPools.lenderPrincipal += actual.lenderPrincipal;
@@ -307,8 +342,18 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       const dist = distributeRepayment(repaymentAmount);
       const actual = processRepaymentDistribution(dist);
 
+      // Mode 2: split margin between payout and rebidding accumulator
+      let marginToPayout = actual.lenderMargin;
+      if (navMode === 2) {
+        const rebiddingPortion = actual.lenderMargin * (marginRebiddingPct / 100);
+        marginRebiddingAccumulator += rebiddingPortion;
+        totalAum += rebiddingPortion;
+        aumFromMarginRebidding += rebiddingPortion;
+        marginToPayout = actual.lenderMargin - rebiddingPortion;
+      }
+
       // Add to main pools (so NAV/write-offs/payouts work automatically)
-      monthlyPools.lenderMargin += actual.lenderMargin;
+      monthlyPools.lenderMargin += marginToPayout;
       monthlyPools.platformProvision += actual.platformProvision;
       monthlyPools.platformRevenue += actual.platformRevenue;
       monthlyPools.lenderPrincipal += actual.lenderPrincipal;
@@ -319,11 +364,11 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       accumulatorFromRebidding += actual.lenderPrincipal;
 
       // Also track in rebidding-specific pools (for display)
-      monthlyRebiddingPools.lenderMargin += actual.lenderMargin;
+      monthlyRebiddingPools.lenderMargin += marginToPayout;
       monthlyRebiddingPools.platformProvision += actual.platformProvision;
       monthlyRebiddingPools.platformRevenue += actual.platformRevenue;
       monthlyRebiddingPools.lenderPrincipal += actual.lenderPrincipal;
-      cumulativeRebiddingPools.lenderMargin += actual.lenderMargin;
+      cumulativeRebiddingPools.lenderMargin += marginToPayout;
       cumulativeRebiddingPools.platformProvision += actual.platformProvision;
       cumulativeRebiddingPools.platformRevenue += actual.platformRevenue;
       cumulativeRebiddingPools.lenderPrincipal += actual.lenderPrincipal;
@@ -353,6 +398,73 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       totalRebiddingFromPrincipal += 5000000;
     }
 
+    // 2d. Process margin-rebidding loan repayments for today (Mode 2 only)
+    let todayMarginRebiddingRepaymentTotal = 0;
+    if (navMode === 2) {
+      for (const mrl of marginRebiddingLoans) {
+        if (dateStr < mrl.startDate) continue;
+        if (current.getDay() !== mrl.repaymentDay) continue;
+        const maxRepayment = mrl.loanAmount * 1.33;
+        if (mrl.totalRepaid >= maxRepayment) continue;
+
+        const repaymentAmount = mrl.weeklyRepayment;
+        const dist = distributeRepayment(repaymentAmount);
+        const actual = processRepaymentDistribution(dist);
+
+        // Split margin between payout and rebidding accumulator
+        const rebiddingPortion = actual.lenderMargin * (marginRebiddingPct / 100);
+        marginRebiddingAccumulator += rebiddingPortion;
+        totalAum += rebiddingPortion;
+        aumFromMarginRebidding += rebiddingPortion;
+        const marginToPayout = actual.lenderMargin - rebiddingPortion;
+
+        // Add to main pools
+        monthlyPools.lenderMargin += marginToPayout;
+        monthlyPools.platformProvision += actual.platformProvision;
+        monthlyPools.platformRevenue += actual.platformRevenue;
+        monthlyPools.lenderPrincipal += actual.lenderPrincipal;
+        cumulativePools.platformProvision += actual.platformProvision;
+        cumulativePools.platformRevenue += actual.platformRevenue;
+        cumulativePools.lenderPrincipal += actual.lenderPrincipal;
+
+        // Principal from margin-rebidding loans feeds into principal rebidding accumulator
+        rebiddingPrincipalAccumulator += actual.lenderPrincipal;
+        accumulatorFromRebidding += actual.lenderPrincipal;
+
+        // Track in margin-rebidding-specific pools (for display)
+        monthlyMarginRebiddingPools.lenderMargin += marginToPayout;
+        monthlyMarginRebiddingPools.platformProvision += actual.platformProvision;
+        monthlyMarginRebiddingPools.platformRevenue += actual.platformRevenue;
+        monthlyMarginRebiddingPools.lenderPrincipal += actual.lenderPrincipal;
+        cumulativeMarginRebiddingPools.lenderMargin += marginToPayout;
+        cumulativeMarginRebiddingPools.platformProvision += actual.platformProvision;
+        cumulativeMarginRebiddingPools.platformRevenue += actual.platformRevenue;
+        cumulativeMarginRebiddingPools.lenderPrincipal += actual.lenderPrincipal;
+
+        todayMarginRebiddingRepaymentTotal += repaymentAmount;
+        totalMarginRebiddingRepaid += repaymentAmount;
+        mrl.totalRepaid = (mrl.totalRepaid || 0) + repaymentAmount;
+        totalRepaid += repaymentAmount;
+      }
+    }
+
+    // 2e. Create margin-rebidding loans when accumulator reaches 5M threshold (Mode 2 only)
+    // Margin is already in AUM (added when it entered the accumulator), so loan creation
+    // only deducts from the accumulator — no AUM change, keeping NAV stable.
+    if (navMode === 2) {
+      while (writeOffDeficit <= 0 && marginRebiddingAccumulator >= 5000000) {
+        const nextDay = addDays(current, 1);
+        marginRebiddingLoans.push({
+          loanAmount: 5000000,
+          weeklyRepayment: 133000,
+          startDate: formatDate(nextDay),
+          repaymentDay: nextDay.getDay(),
+          totalRepaid: 0,
+        });
+        marginRebiddingAccumulator -= 5000000;
+      }
+    }
+
     // 3. Process write-offs for today (accumulate for end of month)
     const todayWriteOffs = writeOffsByDate[dateStr] || [];
     for (const wo of todayWriteOffs) {
@@ -361,7 +473,12 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
 
     // 4. End of day: recalculate NAV
     if (totalUnits > 0) {
-      nav = calculateDailyNav(monthlyPools.lenderMargin, totalAum, totalUnits);
+      if (navMode === 2) {
+        // Mode 2: margin rebidding is already in AUM, so NAV = AUM / units
+        nav = totalAum / totalUnits;
+      } else {
+        nav = calculateDailyNav(monthlyPools.lenderMargin, totalAum, totalUnits);
+      }
     }
 
     // 5. Record daily snapshot
@@ -385,9 +502,13 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       totalWithdrawn,
       dailyRepayment: todayRepaymentTotal,
       dailyRebiddingRepayment: todayRebiddingRepaymentTotal,
+      dailyMarginRebiddingRepayment: todayMarginRebiddingRepaymentTotal,
       totalRebiddingRepaid,
       outstandingAmount: totalInvested - totalRepaid,
-      accumulatedMargin: monthlyPools.lenderMargin,
+      accumulatedMargin: navMode === 2 ? marginRebiddingAccumulator : monthlyPools.lenderMargin,
+      marginRebiddingAccumulator,
+      aumFromInvestment,
+      aumFromMarginRebidding,
       writeOffDeficit,
       recoveryMode: writeOffDeficit > 0,
       totalRecovered,
@@ -404,6 +525,12 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         platformRevenue: cumulativeRebiddingPools.platformRevenue,
         lenderPrincipal: displayRebiddingPrincipal,
       },
+      marginRebiddingPools: {
+        lenderMargin: monthlyMarginRebiddingPools.lenderMargin,
+        platformProvision: cumulativeMarginRebiddingPools.platformProvision,
+        platformRevenue: cumulativeMarginRebiddingPools.platformRevenue,
+        lenderPrincipal: cumulativeMarginRebiddingPools.lenderPrincipal,
+      },
       lenders: lenderSnapshots,
     });
 
@@ -412,11 +539,16 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       // Apply write-off absorption
       let writeOffResult = null;
       if (monthlyWriteOffAmount > 0) {
+        // Mode 2: include marginRebiddingAccumulator in available margin for absorption
+        const totalAvailableMargin = navMode === 2
+          ? monthlyPools.lenderMargin + marginRebiddingAccumulator
+          : monthlyPools.lenderMargin;
+
         // Absorb from full available pool balances:
         // - lenderMargin: monthly only (resets each month, distributed to lenders)
         // - provision/revenue/principal: cumulative (never distributed, full balance is available)
         const availablePools = {
-          lenderMargin: monthlyPools.lenderMargin,
+          lenderMargin: totalAvailableMargin,
           platformProvision: cumulativePools.platformProvision,
           platformRevenue: cumulativePools.platformRevenue,
           lenderPrincipal: cumulativePools.lenderPrincipal,
@@ -425,8 +557,28 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
 
         writeOffResult = absorbWriteOff(availablePools, monthlyWriteOffAmount);
 
-        // Update monthly margin for payout calculation
-        monthlyPools.lenderMargin = writeOffResult.pools.lenderMargin;
+        // Mode 2: split remaining margin back proportionally between payout and rebidding
+        if (navMode === 2) {
+          const remainingMargin = writeOffResult.pools.lenderMargin;
+          const preAccumulator = marginRebiddingAccumulator;
+          if (totalAvailableMargin > 0) {
+            const payoutRatio = monthlyPools.lenderMargin / totalAvailableMargin;
+            monthlyPools.lenderMargin = remainingMargin * payoutRatio;
+            marginRebiddingAccumulator = remainingMargin * (1 - payoutRatio);
+          } else {
+            monthlyPools.lenderMargin = 0;
+            marginRebiddingAccumulator = 0;
+          }
+          // Accumulator margin is already in AUM, so reduce AUM by the absorbed amount
+          const accumulatorReduction = preAccumulator - marginRebiddingAccumulator;
+          if (accumulatorReduction > 0) {
+            totalAum -= accumulatorReduction;
+            aumFromMarginRebidding -= accumulatorReduction;
+          }
+        } else {
+          // Update monthly margin for payout calculation
+          monthlyPools.lenderMargin = writeOffResult.pools.lenderMargin;
+        }
 
         // Update cumulative pools directly from absorption result
         cumulativePools.platformProvision = writeOffResult.pools.platformProvision;
@@ -449,6 +601,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         // Adjust AUM for unabsorbed principal loss and track deficit for recovery
         if (writeOffResult.unabsorbed > 0) {
           totalAum -= writeOffResult.unabsorbed;
+          aumFromInvestment -= writeOffResult.unabsorbed;
           writeOffDeficit += writeOffResult.unabsorbed;
         }
       }
@@ -494,6 +647,7 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
       });
 
       // Recalculate NAV after payout (margin pool emptied, AUM already adjusted)
+      // Mode 2: margin rebidding is already in AUM, so same formula for both modes
       nav = totalUnits > 0 ? totalAum / totalUnits : INITIAL_NAV;
 
       // Update the last daily snapshot with post-payout NAV, AUM, and write-off details
@@ -501,6 +655,14 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         const lastSnap = dailySnapshots[dailySnapshots.length - 1];
         lastSnap.navAfterPayout = nav;
         lastSnap.totalAum = totalAum;
+        lastSnap.aumFromInvestment = aumFromInvestment;
+        lastSnap.aumFromMarginRebidding = aumFromMarginRebidding;
+        lastSnap.marginRebiddingAccumulator = marginRebiddingAccumulator;
+        if (navMode === 2) {
+          lastSnap.accumulatedMargin = marginRebiddingAccumulator;
+        } else {
+          lastSnap.accumulatedMargin = 0; // margin pool emptied after payout
+        }
         lastSnap.writeOffDeficit = writeOffDeficit;
         lastSnap.recoveryMode = writeOffDeficit > 0;
         lastSnap.totalRecovered = totalRecovered;
@@ -528,18 +690,25 @@ export function runSimulation(investments, borrowers, tenorMonths = 12) {
         platformRevenue: 0,
         lenderPrincipal: 0,
       };
+      monthlyMarginRebiddingPools = {
+        lenderMargin: 0,
+        platformProvision: 0,
+        platformRevenue: 0,
+        lenderPrincipal: 0,
+      };
       monthlyWriteOffAmount = 0;
       monthlyRecoveryFunneled = 0;
+      // Note: marginRebiddingAccumulator persists across months (not reset)
     }
 
     current = addDays(current, 1);
   }
 
   // Build chart-ready data from snapshots
-  return buildChartData(dailySnapshots, monthlyPayouts, lenderState);
+  return buildChartData(dailySnapshots, monthlyPayouts, lenderState, navMode);
 }
 
-function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
+function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState, navMode = 1) {
   // NAV Chart: daily NAV values
   const navData = dailySnapshots.map((s) => ({
     date: s.date,
@@ -604,6 +773,8 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
   const aumData = dailySnapshots.map((s) => ({
     date: s.date,
     aum: Math.round(s.totalAum),
+    aumFromInvestment: Math.round(s.aumFromInvestment),
+    aumFromMarginRebidding: Math.round(s.aumFromMarginRebidding),
     writeOffDeficit: Math.round(s.writeOffDeficit),
     recoveryMode: s.recoveryMode,
   }));
@@ -619,6 +790,16 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     rebiddingLenderPrincipal: Math.round(s.rebiddingPools.lenderPrincipal),
     rebiddingPlatformRevenue: Math.round(s.rebiddingPools.platformRevenue),
     rebiddingPlatformProvision: Math.round(s.rebiddingPools.platformProvision),
+    marginRebLenderMargin: Math.round(s.marginRebiddingPools?.lenderMargin || 0),
+    marginRebLenderPrincipal: Math.round(s.marginRebiddingPools?.lenderPrincipal || 0),
+    marginRebPlatformRevenue: Math.round(s.marginRebiddingPools?.platformRevenue || 0),
+    marginRebPlatformProvision: Math.round(s.marginRebiddingPools?.platformProvision || 0),
+  }));
+
+  // Margin Rebidding Accumulator Chart (Mode 2 only)
+  const marginRebiddingAccumulatorData = dailySnapshots.map((s) => ({
+    date: s.date,
+    marginRebiddingAccumulator: Math.round(s.marginRebiddingAccumulator),
   }));
 
   // Daily Repayment Chart: repayment amount per day
@@ -676,6 +857,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     date: s.date,
     dailyRepayment: s.dailyRepayment,
     dailyRebiddingRepayment: s.dailyRebiddingRepayment,
+    dailyMarginRebiddingRepayment: s.dailyMarginRebiddingRepayment,
     lenderMargin: s.pools.lenderMargin,
     lenderPrincipal: s.pools.lenderPrincipal,
     platformRevenue: s.pools.platformRevenue,
@@ -684,9 +866,16 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     rebiddingLenderPrincipal: s.rebiddingPools.lenderPrincipal,
     rebiddingPlatformRevenue: s.rebiddingPools.platformRevenue,
     rebiddingPlatformProvision: s.rebiddingPools.platformProvision,
+    marginRebLenderMargin: s.marginRebiddingPools?.lenderMargin || 0,
+    marginRebLenderPrincipal: s.marginRebiddingPools?.lenderPrincipal || 0,
+    marginRebPlatformRevenue: s.marginRebiddingPools?.platformRevenue || 0,
+    marginRebPlatformProvision: s.marginRebiddingPools?.platformProvision || 0,
     nav: s.navAfterPayout ?? s.nav,
     accumulatedMargin: s.accumulatedMargin,
+    marginRebiddingAccumulator: s.marginRebiddingAccumulator,
     totalAum: s.totalAum,
+    aumFromInvestment: s.aumFromInvestment,
+    aumFromMarginRebidding: s.aumFromMarginRebidding,
     totalUnits: s.totalUnits,
     totalInvested: s.totalInvested,
     totalWithdrawn: s.totalWithdrawn,
@@ -748,6 +937,7 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     dailyRepaymentData,
     dailyRebiddingRepaymentData,
     totalRepaymentData,
+    marginRebiddingAccumulatorData,
     tableData,
     payoutTableData,
     returnRateTableData,
@@ -755,5 +945,6 @@ function buildChartData(dailySnapshots, monthlyPayouts, finalLenderState) {
     profitComparisonTableData,
     lenderIds: allLenderIds,
     allLenderIds: [...new Set(Object.keys(finalLenderState))],
+    navMode,
   };
 }

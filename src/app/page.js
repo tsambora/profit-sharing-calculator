@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import useSimulationStore from "@/store/simulationStore";
 import SimulationTabs from "@/components/SimulationTabs";
 import LenderInvestmentTable from "@/components/inputs/LenderInvestmentTable";
 import BorrowerRepaymentTable from "@/components/inputs/BorrowerRepaymentTable";
@@ -10,10 +11,62 @@ export default function Home() {
   const [tutorialOpen, setTutorialOpen] = useState(true);
   const [guideOpen, setGuideOpen] = useState(true);
   const [tablesOpen, setTablesOpen] = useState(true);
+  const { navMode, marginRebiddingPct, setNavMode, setMarginRebiddingPct } = useSimulationStore();
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold mb-1">Profit Sharing Simulator</h1>
+
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+        <h3 className="font-semibold text-purple-900 mb-3">NAV Calculation Mode</h3>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="navMode"
+              value={2}
+              checked={navMode === 2}
+              onChange={() => setNavMode(2)}
+              className="accent-purple-600"
+            />
+            <span className="text-sm text-purple-900">
+              <strong>Option 1: Margin Rebidding NAV</strong> — A configured % of margin goes to rebidding instead of payout. NAV tracks the rebidding accumulator, so it stays smooth (no sawtooth).
+            </span>
+          </label>
+          {navMode === 2 && (
+            <div className="ml-6 flex items-center gap-2">
+              <label className="text-sm text-purple-900 font-medium">Margin to Rebidding:</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={5}
+                value={marginRebiddingPct}
+                onChange={(e) => setMarginRebiddingPct(Math.max(0, Math.min(100, Number(e.target.value))))}
+                className="w-20 px-2 py-1 border border-purple-300 rounded text-sm"
+              />
+              <span className="text-sm text-purple-700">%</span>
+              <span className="text-xs text-purple-500 ml-2">
+                ({100 - marginRebiddingPct}% goes to lender payout)
+              </span>
+            </div>
+          )}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="navMode"
+              value={1}
+              checked={navMode === 1}
+              onChange={() => setNavMode(1)}
+              className="accent-purple-600"
+            />
+            <span className="text-sm text-purple-900">
+              <strong>Option 2: Margin Pool NAV</strong> — NAV = (Accumulated Margin + AUM) / Units. Margin resets monthly on payout.
+            </span>
+          </label>
+        </div>
+      </div>
+
       <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
         <button
           onClick={() => setGuideOpen(!guideOpen)}
@@ -65,7 +118,12 @@ export default function Home() {
               <span className="font-bold">133% Loan Cap</span> — Each borrower repays up to 133% of their loan amount, then stops.
             </div>
             <div>
-              <span className="font-bold">NAV Calculation</span> — NAV = (Accumulated Lender Margin + Total AUM) / Total Units. Recalculated daily. Resets after monthly payout.
+              <span className="font-bold">NAV Calculation</span> —{" "}
+              {navMode === 2 ? (
+                <>NAV = Total AUM / Total Units. {marginRebiddingPct}% of margin goes to the rebidding accumulator and is immediately counted as AUM, {100 - marginRebiddingPct}% goes to lender payout. When the accumulator reaches 5M, a new loan is created — the money is already in AUM, so NAV stays stable.</>
+              ) : (
+                <>NAV = (Accumulated Lender Margin + Total AUM) / Total Units. Recalculated daily. Resets after monthly payout.</>
+              )}
             </div>
             <div>
               <span className="font-bold">Monthly Payout Cycle</span> — At month-end: write-offs are absorbed from pools, lender margin is distributed as payouts proportional to units held, then margin pool resets.

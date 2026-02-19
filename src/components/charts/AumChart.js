@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export default function AumChart({ data }) {
+export default function AumChart({ data, navMode = 1 }) {
   if (!data || data.length === 0) return null;
 
   const step = Math.max(1, Math.floor(data.length / 60));
@@ -27,14 +27,37 @@ export default function AumChart({ data }) {
           <YAxis tick={{ fontSize: 10 }} width={80} tickFormatter={(v) => v.toLocaleString("id-ID")} />
           <Tooltip formatter={(v) => v.toLocaleString("id-ID")} />
           <Legend />
-          <Area
-            type="monotone"
-            dataKey="aum"
-            stroke="#0891b2"
-            fill="#cffafe"
-            name="AUM"
-            strokeWidth={2}
-          />
+          {navMode === 2 ? (
+            <>
+              <Area
+                type="monotone"
+                dataKey="aumFromInvestment"
+                stroke="#0891b2"
+                fill="#cffafe"
+                name="AUM from Investment"
+                strokeWidth={2}
+                stackId="aum"
+              />
+              <Area
+                type="monotone"
+                dataKey="aumFromMarginRebidding"
+                stroke="#9333ea"
+                fill="#f3e8ff"
+                name="AUM from Margin Rebidding"
+                strokeWidth={2}
+                stackId="aum"
+              />
+            </>
+          ) : (
+            <Area
+              type="monotone"
+              dataKey="aum"
+              stroke="#0891b2"
+              fill="#cffafe"
+              name="AUM"
+              strokeWidth={2}
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
     </div>

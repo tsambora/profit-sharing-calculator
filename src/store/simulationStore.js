@@ -184,6 +184,30 @@ const useSimulationStore = create(
       activeTabId: "1",
       tabCounter: 7,
 
+      // NAV mode: 2 = Margin Rebidding NAV (Option 1), 1 = Margin Pool NAV (Option 2)
+      navMode: 2,
+      marginRebiddingPct: 50,
+
+      setNavMode: (mode) => {
+        const state = get();
+        // Clear all tab results when NAV mode changes
+        const newTabs = {};
+        for (const [id, tab] of Object.entries(state.tabs)) {
+          newTabs[id] = { ...tab, results: null };
+        }
+        set({ navMode: mode, tabs: newTabs });
+      },
+
+      setMarginRebiddingPct: (pct) => {
+        const state = get();
+        // Clear all tab results when percentage changes
+        const newTabs = {};
+        for (const [id, tab] of Object.entries(state.tabs)) {
+          newTabs[id] = { ...tab, results: null };
+        }
+        set({ marginRebiddingPct: pct, tabs: newTabs });
+      },
+
       addTab: () => {
         const state = get();
         const newId = String(state.tabCounter + 1);
@@ -324,7 +348,7 @@ const useSimulationStore = create(
       runSimulation: () => {
         const state = get();
         const tab = state.tabs[state.activeTabId];
-        const results = runSimulation(tab.investments, tab.borrowers);
+        const results = runSimulation(tab.investments, tab.borrowers, 12, state.navMode, state.marginRebiddingPct);
         set({
           tabs: {
             ...state.tabs,
@@ -359,9 +383,14 @@ const useSimulationStore = create(
         ),
         activeTabId: state.activeTabId,
         tabCounter: state.tabCounter,
+        navMode: state.navMode,
+        marginRebiddingPct: state.marginRebiddingPct,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        // Migration: default navMode and marginRebiddingPct
+        if (state.navMode === undefined) state.navMode = 2;
+        if (state.marginRebiddingPct === undefined) state.marginRebiddingPct = 50;
         // Restore nextId to be higher than any existing item id
         let maxId = 0;
         for (const tab of Object.values(state.tabs)) {

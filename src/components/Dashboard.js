@@ -17,7 +17,7 @@ import CalculationTable, {
 
 const fmtId = (n) => Math.round(n).toLocaleString("id-ID");
 
-function buildPoolTableColumns(poolLabel, fixedAmount, accessor, rebiddingAccessor) {
+function buildPoolTableColumns(poolLabel, fixedAmount, accessor, rebiddingAccessor, marginRebAccessor) {
   const REPAYMENT = 133000;
   const ratio = fixedAmount / REPAYMENT;
   const cols = [
@@ -61,32 +61,49 @@ function buildPoolTableColumns(poolLabel, fixedAmount, accessor, rebiddingAccess
       format: "formula",
     });
   }
+  if (marginRebAccessor) {
+    cols.push({
+      header: `${poolLabel} from Margin Reb.`,
+      accessor: (r) => marginRebAccessor(r),
+      format: "number",
+    });
+  }
   return cols;
 }
 
-const navColumns = [
-  { header: "Date", accessor: (r) => r.date, format: "string" },
-  { header: "NAV", accessor: (r) => r.nav, format: "decimal" },
-  {
-    header: "Accumulated Margin",
-    accessor: (r) => r.accumulatedMargin,
-    format: "number",
-  },
-  { header: "Total AUM", accessor: (r) => r.totalAum, format: "number" },
-  {
-    header: "Total Units",
-    accessor: (r) => r.totalUnits,
-    format: "decimal",
-  },
-  {
-    header: "How to Calculate",
-    accessor: (r) => {
-      if (r.totalUnits === 0) return "No units";
-      return `(${fmtId(r.accumulatedMargin)} + ${fmtId(r.totalAum)}) / ${formatDecimal(r.totalUnits)} = ${formatDecimal(r.nav)}`;
+function buildNavColumns(navMode) {
+  const cols = [
+    { header: "Date", accessor: (r) => r.date, format: "string" },
+    { header: "NAV", accessor: (r) => r.nav, format: "decimal" },
+  ];
+  if (navMode !== 2) {
+    cols.push({
+      header: "Accumulated Margin",
+      accessor: (r) => r.accumulatedMargin,
+      format: "number",
+    });
+  }
+  cols.push(
+    { header: "Total AUM", accessor: (r) => r.totalAum, format: "number" },
+    {
+      header: "Total Units",
+      accessor: (r) => r.totalUnits,
+      format: "decimal",
     },
-    format: "formula",
-  },
-];
+    {
+      header: "How to Calculate",
+      accessor: (r) => {
+        if (r.totalUnits === 0) return "No units";
+        if (navMode === 2) {
+          return `${fmtId(r.totalAum)} [AUM, includes margin rebidding] / ${formatDecimal(r.totalUnits)} = ${formatDecimal(r.nav)}`;
+        }
+        return `(${fmtId(r.accumulatedMargin)} + ${fmtId(r.totalAum)}) / ${formatDecimal(r.totalUnits)} = ${formatDecimal(r.nav)}`;
+      },
+      format: "formula",
+    },
+  );
+  return cols;
+}
 
 const aumColumns = [
   { header: "Date", accessor: (r) => r.date, format: "string" },
@@ -220,35 +237,42 @@ export default function Dashboard() {
   const { tabs, activeTabId, runSimulation, canGenerate } = useSimulationStore();
   const results = tabs[activeTabId]?.results;
   const canRun = canGenerate();
+  const navMode = results?.navMode || 1;
 
   const handleGenerate = () => {
     runSimulation();
   };
 
+  const marginRebArg = navMode === 2 ? (r) => r.marginRebLenderMargin : undefined;
   const lenderMarginColumns = buildPoolTableColumns(
     "Margin",
     15000,
     (r) => r.lenderMargin,
-    (r) => r.rebiddingLenderMargin
+    (r) => r.rebiddingLenderMargin,
+    marginRebArg
   );
   const lenderPrincipalColumns = buildPoolTableColumns(
     "Principal",
     100000,
     (r) => r.lenderPrincipal,
-    (r) => r.rebiddingLenderPrincipal
+    (r) => r.rebiddingLenderPrincipal,
+    navMode === 2 ? (r) => r.marginRebLenderPrincipal : undefined
   );
   const platformMarginColumns = buildPoolTableColumns(
     "Platform Margin",
     17000,
     (r) => r.platformRevenue,
-    (r) => r.rebiddingPlatformRevenue
+    (r) => r.rebiddingPlatformRevenue,
+    navMode === 2 ? (r) => r.marginRebPlatformRevenue : undefined
   );
   const platformProvisionColumns = buildPoolTableColumns(
     "Provision",
     1000,
     (r) => r.platformProvision,
-    (r) => r.rebiddingPlatformProvision
+    (r) => r.rebiddingPlatformProvision,
+    navMode === 2 ? (r) => r.marginRebPlatformProvision : undefined
   );
+  const navColumns = buildNavColumns(navMode);
 
   return (
     <div>
@@ -307,6 +331,8 @@ export default function Dashboard() {
               fillColor="#dbeafe"
               secondDataKey="rebiddingLenderMargin"
               secondName="Margin from Rebidding"
+              thirdDataKey={navMode === 2 ? "marginRebLenderMargin" : undefined}
+              thirdName="Margin from Margin Rebidding"
               noSample
             />
             <RepaymentPoolChart
@@ -317,6 +343,8 @@ export default function Dashboard() {
               fillColor="#dcfce7"
               secondDataKey="rebiddingLenderPrincipal"
               secondName="Principal from Rebidding"
+              thirdDataKey={navMode === 2 ? "marginRebLenderPrincipal" : undefined}
+              thirdName="Principal from Margin Rebidding"
               noSample
             />
             <RepaymentPoolChart
@@ -327,6 +355,8 @@ export default function Dashboard() {
               fillColor="#fef9c3"
               secondDataKey="rebiddingPlatformRevenue"
               secondName="Platform Margin from Rebidding"
+              thirdDataKey={navMode === 2 ? "marginRebPlatformRevenue" : undefined}
+              thirdName="Platform Margin from Margin Rebidding"
               noSample
             />
             <RepaymentPoolChart
@@ -337,10 +367,22 @@ export default function Dashboard() {
               fillColor="#fee2e2"
               secondDataKey="rebiddingPlatformProvision"
               secondName="Provision from Rebidding"
+              thirdDataKey={navMode === 2 ? "marginRebPlatformProvision" : undefined}
+              thirdName="Provision from Margin Rebidding"
               noSample
             />
+            {navMode === 2 && (
+              <RepaymentPoolChart
+                data={results.marginRebiddingAccumulatorData}
+                dataKey="marginRebiddingAccumulator"
+                title="Margin Rebidding Accumulator"
+                strokeColor="#9333ea"
+                fillColor="#f3e8ff"
+                noSample
+              />
+            )}
             <NavChart data={results.navData} />
-            <AumChart data={results.aumData} />
+            <AumChart data={results.aumData} navMode={navMode} />
             <PayoutChart data={results.payoutData} lenderIds={results.lenderIds} />
             <ReturnRateChart
               data={results.returnRateData}

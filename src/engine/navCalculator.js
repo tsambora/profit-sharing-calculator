@@ -18,6 +18,11 @@ export function calculateDailyNav(accumulatedMargin, totalAum, totalUnits) {
   return (accumulatedMargin + totalAum) / totalUnits;
 }
 
+export function calculateDailyNavMode2(marginRebiddingAccumulator, totalAum, totalUnits) {
+  if (totalUnits <= 0) return INITIAL_NAV;
+  return (marginRebiddingAccumulator + totalAum) / totalUnits;
+}
+
 export function calculateNavAfterPayout(totalAum, totalUnits, writeOffAmount, lenderMarginPool) {
   if (totalUnits <= 0) return INITIAL_NAV;
   // If write-off exceeds margin, NAV takes a hit

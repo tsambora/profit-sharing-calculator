@@ -354,3 +354,20 @@ NAV after payout day:
 - The lenders principal graph now shows the **available** principal amount, which decreases by 5,000,000 IDR each time a rebidding loan is created.
 - Previously the graph only showed cumulative principal growing without reflecting the 5M deductions for rebidding.
 - The graph now visually shows: principal accumulates from repayments, then drops by 5M when a rebidding loan is triggered, making it clear how much principal is actually available in the pool.
+
+### 35. NAV Mode Selection (Option 1 vs Option 2)
+
+**Acceptance Criteria:**
+
+- Users can select between two NAV calculation modes via a purple-themed card at the top of the page:
+  1. **Option 1: Margin Pool NAV** (default) — NAV = (Accumulated Lender Margin + AUM) / Units. Margin resets monthly on payout. This is the original behavior.
+  2. **Option 2: Margin Rebidding NAV** — A user-configured percentage of lender margin is redirected to a margin rebidding accumulator instead of being paid out. NAV = (Margin Rebidding Accumulator + AUM) / Units.
+- When Option 2 is selected, a number input allows setting the rebidding percentage (0-100%, step 5). Default is 50%.
+- **Margin split (Mode 2):** Each repayment's lender margin is split: X% goes to the margin rebidding accumulator, (100-X)% goes to the normal payout pool. This split applies to original repayments, principal-rebidding repayments, and margin-rebidding repayments.
+- **Margin-rebidding loan creation (Mode 2):** When the margin rebidding accumulator reaches 5,000,000 IDR, a new loan is created. 5M leaves the accumulator and enters AUM as a new loan, keeping NAV stable (net zero impact).
+- **Margin-rebidding loan repayments (Mode 2):** Repayments from margin-rebidding loans follow the same 4-pool split. Their margin is also split X%/(100-X)%. Their principal feeds into the principal rebidding accumulator.
+- **Write-off absorption (Mode 2):** Available margin for absorption includes both the payout pool and the margin rebidding accumulator. After absorption, remaining margin is split back proportionally. All rebidding (both principal and margin) is paused during recovery.
+- **Charts (Mode 2):** Pool charts show a 3rd line (purple) for margin-rebidding pools. AUM chart shows 2 lines (investment vs margin rebidding). A new Margin Rebidding Accumulator chart shows accumulation/drops at 5M.
+- **NAV stays smooth in Mode 2:** Because margin goes to the rebidding accumulator (which persists across months) rather than the payout pool (which resets monthly), there is no sawtooth pattern.
+- Changing the NAV mode or rebidding percentage clears all tab results (requires re-running simulation).
+- Both settings are persisted to localStorage with migration for existing users (defaults to Mode 1, 50%).

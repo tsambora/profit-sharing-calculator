@@ -22,6 +22,10 @@ export default function RepaymentPoolChart({
   secondStrokeColor = "#f97316",
   secondFillColor = "#fed7aa",
   secondName = "Rebidding",
+  thirdDataKey,
+  thirdStrokeColor = "#9333ea",
+  thirdFillColor = "#f3e8ff",
+  thirdName = "Margin Rebidding",
 }) {
   if (!data || data.length === 0) return null;
 
@@ -62,6 +66,16 @@ export default function RepaymentPoolChart({
               stroke={secondStrokeColor}
               fill={secondFillColor}
               name={secondName}
+              strokeWidth={2}
+            />
+          )}
+          {thirdDataKey && (
+            <Area
+              type="monotone"
+              dataKey={thirdDataKey}
+              stroke={thirdStrokeColor}
+              fill={thirdFillColor}
+              name={thirdName}
               strokeWidth={2}
             />
           )}
