@@ -92,6 +92,7 @@ export default function Home() {
                 <li><strong>Large vs small investments</strong> — Compare a single 100M lender vs multiple smaller lenders to see how unit allocation affects payout distribution.</li>
                 <li><strong>Staggered timing</strong> — Set different start dates for lenders and borrowers to observe how late entries affect NAV and unit pricing.</li>
                 <li><strong>Multiple borrowers</strong> — Add several borrowers to see how a diversified loan book impacts the repayment pool and overall returns.</li>
+                <li><strong>NAV modes</strong> — Switch between Option 1 (Margin Rebidding) and Option 2 (Margin Pool) to compare smooth vs sawtooth NAV behavior. Try different rebidding percentages (0%, 50%, 100%) to see the trade-off between monthly payouts and NAV growth.</li>
               </ul>
             </div>
           </div>
@@ -112,21 +113,27 @@ export default function Home() {
               <span className="font-bold">Repayment Pool Split</span> — Each 133,000 IDR repayment is split into 4 pools: Lender Principal (Rp 100,000), Lender Margin (Rp 15,000), Platform Margin (Rp 17,000), Platform Provision (Rp 1,000). The loan amount is 5,000,000 IDR, repaid over 50 installments (133% of the loan).
             </div>
             <div>
-              <span className="font-bold">Rebidding (Loan Re-addition)</span> — Whenever accumulated Lender Principal reaches 5,000,000 IDR, a new rebidding loan is created (5M loan, 133K/week repayment). This can trigger multiple times as principal accumulates. Repayments from rebidding loans flow through the same 4-pool split, compounding returns over time.
+              <span className="font-bold">Principal Rebidding (Loan Re-addition)</span> — Whenever accumulated Lender Principal reaches 5,000,000 IDR, a new rebidding loan is created (5M loan, 133K/week repayment). This can trigger multiple times as principal accumulates. Repayments from rebidding loans flow through the same 4-pool split, compounding returns over time.
             </div>
+            {navMode === 2 && (
+              <div>
+                <span className="font-bold">Margin Rebidding (Option 1)</span> — {marginRebiddingPct}% of each repayment&apos;s lender margin is redirected to a margin rebidding accumulator and immediately counted as AUM. The remaining {100 - marginRebiddingPct}% goes to lender payout as usual. When the accumulator reaches 5,000,000 IDR, a new margin-rebidding loan is created — since the money is already in AUM, there is no NAV impact. Repayments from margin-rebidding loans follow the same 4-pool split, with their margin also split {marginRebiddingPct}%/{100 - marginRebiddingPct}% and their principal feeding into the principal rebidding accumulator.
+              </div>
+            )}
             <div>
-              <span className="font-bold">133% Loan Cap</span> — Each borrower repays up to 133% of their loan amount, then stops.
+              <span className="font-bold">133% Loan Cap</span> — Each borrower repays up to 133% of their loan amount, then stops. This applies to original, principal-rebidding, and margin-rebidding loans.
             </div>
             <div>
               <span className="font-bold">NAV Calculation</span> —{" "}
               {navMode === 2 ? (
-                <>NAV = Total AUM / Total Units. {marginRebiddingPct}% of margin goes to the rebidding accumulator and is immediately counted as AUM, {100 - marginRebiddingPct}% goes to lender payout. When the accumulator reaches 5M, a new loan is created — the money is already in AUM, so NAV stays stable.</>
+                <>NAV = Total AUM / Total Units. Margin committed to rebidding is immediately counted as AUM, so NAV grows smoothly without the sawtooth pattern seen in Option 2.</>
               ) : (
                 <>NAV = (Accumulated Lender Margin + Total AUM) / Total Units. Recalculated daily. Resets after monthly payout.</>
               )}
             </div>
             <div>
-              <span className="font-bold">Monthly Payout Cycle</span> — At month-end: write-offs are absorbed from pools, lender margin is distributed as payouts proportional to units held, then margin pool resets.
+              <span className="font-bold">Monthly Payout Cycle</span> — At month-end: write-offs are absorbed from pools, lender margin is distributed as payouts proportional to units held, then margin pool resets.{" "}
+              {navMode === 2 && <>In Option 1, only the payout portion ({100 - marginRebiddingPct}%) of margin is distributed — the rebidding portion ({marginRebiddingPct}%) stays in AUM.</>}
             </div>
             <div>
               <span className="font-bold">Write-Off Absorption Waterfall</span> — When a borrower defaults (stops repaying), the outstanding loan amount becomes a write-off at the 1st of the following month. The write-off is absorbed in this order:
@@ -137,6 +144,7 @@ export default function Home() {
                 <li><strong>Lender Principal (Rp 100,000/repayment)</strong> — absorbs last from the cumulative principal pool.</li>
               </ol>
               <div className="mt-1">If all four pools are exhausted and a remainder still exists, that <strong>unabsorbed</strong> amount permanently reduces the fund&apos;s AUM. This is visible in the AUM Movement table.</div>
+              {navMode === 2 && <div className="mt-1">In Option 1, the margin rebidding accumulator is also available for write-off absorption (in addition to the payout margin pool). After absorption, the remaining margin is split back proportionally between payout and rebidding.</div>}
             </div>
             <div>
               <span className="font-bold">AUM Recovery Mechanism</span> — When an unabsorbed write-off reduces AUM, a recovery mode activates to gradually restore the deficit. During recovery:
@@ -144,7 +152,7 @@ export default function Home() {
                 <li><strong>Rp 116,000 of each Rp 133,000 repayment</strong> (Lender Margin Rp 15,000 + Lender Principal Rp 100,000 + Platform Provision Rp 1,000) is funneled back into AUM to close the deficit.</li>
                 <li><strong>Platform Margin (Rp 17,000)</strong> always flows normally — the platform is always paid regardless of recovery mode.</li>
                 <li><strong>Lender payouts are paused</strong> — margin is funneled to AUM recovery instead of being distributed as payouts.</li>
-                <li><strong>Rebidding is paused</strong> — no new rebidding loans are created while the deficit exists, since principal is being funneled to recovery.</li>
+                <li><strong>Rebidding is paused</strong> — no new rebidding loans are created while the deficit exists, since principal is being funneled to recovery.{navMode === 2 && <> This applies to both principal rebidding and margin rebidding.</>}</li>
                 <li><strong>Immediate resume</strong> — as soon as the deficit is fully recovered (reaches 0), normal distribution resumes. If the deficit clears mid-repayment, the remainder is proportionally distributed to pools.</li>
               </ul>
             </div>
