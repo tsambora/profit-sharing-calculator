@@ -93,15 +93,28 @@ function createDefaultTabs() {
     results: null,
   };
 
-  // Write Off
+  // Small Write Off (3 borrowers default)
   tabs["4"] = {
-    name: "Write Off",
+    name: "Small Write Off",
     investments: [
       { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
     ],
     borrowers: [
       ...makeBorrowers(1, 17, "2026-01-08"),
       ...makeBorrowers(18, 20, "2026-01-08", "2026-01-08"),
+    ],
+    results: null,
+  };
+
+  // Massive Write Off (6 borrowers default)
+  tabs["5"] = {
+    name: "Massive Write Off",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+    ],
+    borrowers: [
+      ...makeBorrowers(1, 14, "2026-01-08"),
+      ...makeBorrowers(15, 20, "2026-01-08", "2026-01-08"),
     ],
     results: null,
   };
@@ -130,7 +143,7 @@ function createDefaultTabs() {
     { lenderId: "L-002", date: "2026-01-15", amount: 100000000 },
     { lenderId: "L-003", date: "2026-01-25", amount: 100000000 },
   ];
-  tabs["5"] = {
+  tabs["6"] = {
     name: "NAV vs Avg: Staggered",
     investments: staggeredInvestments.map((inv) => ({
       id: genId(), type: "topup", ...inv,
@@ -146,7 +159,7 @@ function createDefaultTabs() {
     { lenderId: "L-001", date: "2026-01-01", amount: 100000000 },
     { lenderId: "L-002", date: "2026-01-25", amount: 1000000000 },
   ];
-  tabs["6"] = {
+  tabs["7"] = {
     name: "NAV vs Avg: Late Whale",
     investments: lateWhaleInvestments.map((inv) => ({
       id: genId(), type: "topup", ...inv,
@@ -164,7 +177,7 @@ function createDefaultTabs() {
     { lenderId: "L-002", date: "2026-01-08", amount: 1000000000 },
     { lenderId: "L-003", date: "2026-01-25", amount: 100000000 },
   ];
-  tabs["7"] = {
+  tabs["8"] = {
     name: "NAV vs Avg: Mid Whale",
     investments: midWhaleInvestments.map((inv) => ({
       id: genId(), type: "topup", ...inv,
@@ -182,7 +195,7 @@ const useSimulationStore = create(
       // Tab management
       tabs: createDefaultTabs(),
       activeTabId: "1",
-      tabCounter: 7,
+      tabCounter: 8,
 
       // NAV mode: 2 = Margin Rebidding NAV (Option 1), 1 = Margin Pool NAV (Option 2)
       navMode: 2,
