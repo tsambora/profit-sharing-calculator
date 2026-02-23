@@ -1,8 +1,10 @@
-// Compute write-off date: 1st of the month following repaymentStopDate
+// Compute write-off date: 180 days after repaymentStopDate, then 1st of next month
 export function computeWriteOffDate(repaymentStopDate) {
   if (!repaymentStopDate) return null;
   const d = new Date(repaymentStopDate);
-  // Move to 1st of next month
+  // Write-off declaration: 180 days after last repayment
+  d.setDate(d.getDate() + 180);
+  // Absorption: 1st of next month after declaration
   d.setMonth(d.getMonth() + 1, 1);
   return d.toISOString().split("T")[0];
 }

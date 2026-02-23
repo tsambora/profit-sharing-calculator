@@ -92,6 +92,7 @@ export default function Home() {
                 <li><strong>Large vs small investments</strong> — Compare a single 100M lender vs multiple smaller lenders to see how unit allocation affects payout distribution.</li>
                 <li><strong>Staggered timing</strong> — Set different start dates for lenders and borrowers to observe how late entries affect NAV and unit pricing.</li>
                 <li><strong>Multiple borrowers</strong> — Add several borrowers to see how a diversified loan book impacts the repayment pool and overall returns.</li>
+                <li><strong>Write-offs</strong> — Set a <em>repayment stop date</em> on some borrowers to simulate defaults. The write-off is declared 180 days after the stop date and absorbed the following month — watch how the waterfall eats into margin, provision, platform margin, then principal.</li>
                 <li><strong>NAV modes</strong> — Switch between Option 1 (Margin Rebidding) and Option 2 (Margin Pool) to compare smooth vs sawtooth NAV behavior. Try different rebidding percentages (0%, 50%, 100%) to see the trade-off between monthly payouts and NAV growth.</li>
               </ul>
             </div>
@@ -136,7 +137,7 @@ export default function Home() {
               {navMode === 2 && <>In Option 1, only the payout portion ({100 - marginRebiddingPct}%) of margin is distributed — the rebidding portion ({marginRebiddingPct}%) stays in AUM.</>}
             </div>
             <div>
-              <span className="font-bold">Write-Off Absorption Waterfall</span> — When a borrower defaults (stops repaying), the outstanding loan amount becomes a write-off at the 1st of the following month. The write-off is absorbed in this order:
+              <span className="font-bold">Write-Off Absorption Waterfall</span> — When a borrower defaults (stops repaying), the loan is declared written off <strong>180 days</strong> after their last repayment date. The outstanding amount is then absorbed on the 1st of the month following the declaration. The write-off is absorbed in this order:
               <ol className="list-decimal ml-5 mt-1 space-y-1">
                 <li><strong>Lender Margin (Rp 15,000/repayment)</strong> — absorbs first from the monthly accumulated margin pool.</li>
                 <li><strong>Platform Provision (Rp 1,000/repayment)</strong> — absorbs next from the cumulative provision pool.</li>

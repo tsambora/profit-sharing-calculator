@@ -232,7 +232,7 @@ NAV after payout day:
 - The standalone write-off input table has been removed. Write-off information is now part of the borrower form.
 - Each borrower has two new optional fields:
   1. **Repayment Stop Date** — the date the borrower stops making repayments (replaces the old 180-day backdate from write-off date).
-  2. **Write-Off Date** — automatically computed as the 1st of the month following the stop date (read-only, displayed in form and table).
+  2. **Write-Off Date** — automatically computed as the 1st of the month following 180 days after the stop date (read-only, displayed in form and table). The 180-day period represents the declaration window before the loan is officially written off.
 - When a repayment stop date is set, the **write-off outstanding amount** is automatically computed as `max(0, loanAmount - totalRepaid)` where totalRepaid counts repayments from start date to stop date.
 - The write-off outstanding amount is displayed in both the form (as a preview) and the table (as a computed column).
 - Borrowers without a repayment stop date behave normally with no write-off.
