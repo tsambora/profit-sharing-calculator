@@ -11,7 +11,8 @@ export default function Home() {
   const [tutorialOpen, setTutorialOpen] = useState(true);
   const [guideOpen, setGuideOpen] = useState(true);
   const [tablesOpen, setTablesOpen] = useState(true);
-  const { navMode, marginRebiddingPct, setNavMode, setMarginRebiddingPct } = useSimulationStore();
+  const { navMode, marginRebiddingPct, setNavMode, setMarginRebiddingPct, getCurrentTab, setTenor } = useSimulationStore();
+  const currentTenor = getCurrentTab().tenor || 12;
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-6">
@@ -162,6 +163,29 @@ export default function Home() {
       </div>
 
       <SimulationTabs />
+
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-sm font-medium text-gray-700">Simulation Length:</span>
+        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+          {[
+            { label: "1Y", months: 12 },
+            { label: "2Y", months: 24 },
+            { label: "3Y", months: 36 },
+          ].map(({ label, months }) => (
+            <button
+              key={months}
+              onClick={() => setTenor(months)}
+              className={`px-3 py-1 text-sm font-medium border-r last:border-r-0 border-gray-300 ${
+                currentTenor === months
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mb-6">
         <button

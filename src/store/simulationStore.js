@@ -13,6 +13,7 @@ function createEmptyTab(name) {
     investments: [],
     borrowers: [],
     results: null,
+    tenor: 12,
   };
 }
 
@@ -109,6 +110,7 @@ function createDefaultTabs() {
     ],
     borrowers: makeBorrowers(1, 20, "2026-01-08"),
     results: null,
+    tenor: 12,
   };
 
   // Divestment
@@ -125,6 +127,7 @@ function createDefaultTabs() {
       ...makeBorrowers(21, 40, "2026-02-08"),
     ],
     results: null,
+    tenor: 12,
   };
 
   // Massive Write Off (6 borrowers default)
@@ -138,6 +141,7 @@ function createDefaultTabs() {
       ...makeBorrowers(15, 20, "2026-01-08", "2026-01-08"),
     ],
     results: null,
+    tenor: 12,
   };
 
   // NAV vs Avg: Late Whale
@@ -152,6 +156,7 @@ function createDefaultTabs() {
     })),
     borrowers: makeBorrowersForLenders(lateWhaleInvestments),
     results: null,
+    tenor: 12,
   };
 
   // Stress Test 1: 1.4% default rate, +0.1%/month (28 borrowers, +2/month)
@@ -160,6 +165,7 @@ function createDefaultTabs() {
     investments: makeStressTestInvestments(),
     borrowers: makeStressTestBorrowers(28, 2),
     results: null,
+    tenor: 36,
   };
 
   // Stress Test 2: 2.8% default rate, +0.1%/month (56 borrowers, +2/month)
@@ -168,6 +174,7 @@ function createDefaultTabs() {
     investments: makeStressTestInvestments(),
     borrowers: makeStressTestBorrowers(56, 2),
     results: null,
+    tenor: 36,
   };
 
   // Stress Test 3: 5.6% default rate, +0.1%/month (112 borrowers, +2/month)
@@ -176,6 +183,16 @@ function createDefaultTabs() {
     investments: makeStressTestInvestments(),
     borrowers: makeStressTestBorrowers(112, 2),
     results: null,
+    tenor: 36,
+  };
+
+  // Stress Test 4: 10.2% default rate, +0.1%/month (204 borrowers, +2/month)
+  tabs["8"] = {
+    name: "Stress Test 4",
+    investments: makeStressTestInvestments(),
+    borrowers: makeStressTestBorrowers(204, 2),
+    results: null,
+    tenor: 36,
   };
 
   return tabs;
@@ -187,7 +204,7 @@ const useSimulationStore = create(
       // Tab management
       tabs: createDefaultTabs(),
       activeTabId: "1",
-      tabCounter: 7,
+      tabCounter: 8,
 
       // NAV mode: 2 = Margin Rebidding NAV (Option 1), 1 = Margin Pool NAV (Option 2)
       navMode: 2,
@@ -240,6 +257,17 @@ const useSimulationStore = create(
       getCurrentTab: () => {
         const state = get();
         return state.tabs[state.activeTabId] || createEmptyTab();
+      },
+
+      setTenor: (months) => {
+        const state = get();
+        const tab = state.tabs[state.activeTabId];
+        set({
+          tabs: {
+            ...state.tabs,
+            [state.activeTabId]: { ...tab, tenor: months, results: null },
+          },
+        });
       },
 
       // Investment actions
@@ -353,7 +381,7 @@ const useSimulationStore = create(
       runSimulation: () => {
         const state = get();
         const tab = state.tabs[state.activeTabId];
-        const results = runSimulation(tab.investments, tab.borrowers, 24, state.navMode, state.marginRebiddingPct);
+        const results = runSimulation(tab.investments, tab.borrowers, tab.tenor || 12, state.navMode, state.marginRebiddingPct);
         set({
           tabs: {
             ...state.tabs,
@@ -383,6 +411,7 @@ const useSimulationStore = create(
               name: tab.name,
               investments: tab.investments,
               borrowers: tab.borrowers,
+              tenor: tab.tenor,
             },
           ])
         ),
@@ -401,6 +430,7 @@ const useSimulationStore = create(
         for (const tab of Object.values(state.tabs)) {
           // Migration: remove old writeOffs array, default loanAmount for existing borrowers
           if (tab.writeOffs) delete tab.writeOffs;
+          if (tab.tenor === undefined) tab.tenor = 12;
           for (const b of tab.borrowers) {
             if (b.loanAmount === undefined) b.loanAmount = 5000000;
             if (b.repaymentStopDate === undefined) b.repaymentStopDate = "";
