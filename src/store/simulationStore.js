@@ -36,91 +36,7 @@ function createDefaultTabs() {
     return borrowers;
   }
 
-  function makeDailyBorrowers(start, end, startDate) {
-    const borrowers = [];
-    for (let i = start; i <= end; i++) {
-      const num = String(i).padStart(3, "0");
-      borrowers.push({
-        id: genId(),
-        borrowerId: `B-${num}`,
-        schedule: "daily",
-        startDate,
-        amount: 133000,
-        loanAmount: 5000000,
-        repaymentStopDate: "",
-      });
-    }
-    return borrowers;
-  }
-
-  // Happy Path 1
-  tabs["1"] = {
-    name: "Happy Path 1",
-    investments: [
-      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
-    ],
-    borrowers: makeBorrowers(1, 20, "2026-01-08"),
-    results: null,
-  };
-
-  // Happy Path 2
-  tabs["2"] = {
-    name: "Happy Path 2",
-    investments: [
-      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
-      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-02-01", amount: 100000000 },
-    ],
-    borrowers: [
-      ...makeBorrowers(1, 20, "2026-01-08"),
-      ...makeBorrowers(21, 40, "2026-02-08"),
-    ],
-    results: null,
-  };
-
-  // Divestment
-  tabs["3"] = {
-    name: "Divestment",
-    investments: [
-      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
-      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-02-01", amount: 100000000 },
-      { id: genId(), lenderId: "L-001", type: "withdraw", date: "2026-07-01", amount: 50000000 },
-      { id: genId(), lenderId: "L-003", type: "topup", date: "2026-07-01", amount: 50000000 },
-    ],
-    borrowers: [
-      ...makeBorrowers(1, 20, "2026-01-08"),
-      ...makeBorrowers(21, 40, "2026-02-08"),
-    ],
-    results: null,
-  };
-
-  // Small Write Off (3 borrowers default)
-  tabs["4"] = {
-    name: "Small Write Off",
-    investments: [
-      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
-    ],
-    borrowers: [
-      ...makeBorrowers(1, 17, "2026-01-08"),
-      ...makeBorrowers(18, 20, "2026-01-08", "2026-01-08"),
-    ],
-    results: null,
-  };
-
-  // Massive Write Off (6 borrowers default)
-  tabs["5"] = {
-    name: "Massive Write Off",
-    investments: [
-      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
-    ],
-    borrowers: [
-      ...makeBorrowers(1, 14, "2026-01-08"),
-      ...makeBorrowers(15, 20, "2026-01-08", "2026-01-08"),
-    ],
-    results: null,
-  };
-
   // Helper: generate borrowers that follow each lender's investment
-  // Each lender brings (amount / 5M) borrowers, starting 1 week after investment date
   function makeBorrowersForLenders(lenderInvestments) {
     let borrowerNum = 1;
     const allBorrowers = [];
@@ -135,31 +51,101 @@ function createDefaultTabs() {
     return allBorrowers;
   }
 
-  // Gamification Scenario 1: Equal investment, staggered entry
-  // 3 lenders invest 100M each at different times — shows avg balance rewards early investors
-  // Each brings 20 borrowers (100M/5M) starting 1 week later
-  const staggeredInvestments = [
-    { lenderId: "L-001", date: "2026-01-01", amount: 100000000 },
-    { lenderId: "L-002", date: "2026-01-15", amount: 100000000 },
-    { lenderId: "L-003", date: "2026-01-25", amount: 100000000 },
-  ];
-  tabs["6"] = {
-    name: "NAV vs Avg: Staggered",
-    investments: staggeredInvestments.map((inv) => ({
-      id: genId(), type: "topup", ...inv,
-    })),
-    borrowers: makeBorrowersForLenders(staggeredInvestments),
+  // Helper: 10 lenders each investing 1B IDR on Jan 1 2026
+  function makeStressTestInvestments() {
+    const investments = [];
+    for (let i = 1; i <= 10; i++) {
+      investments.push({
+        id: genId(),
+        lenderId: `L-${String(i).padStart(3, "0")}`,
+        type: "topup",
+        date: "2026-01-01",
+        amount: 1000000000,
+      });
+    }
+    return investments;
+  }
+
+  // Helper: 2000 borrowers with monthly waves of defaults
+  // startDefaultCount borrowers stop in Feb 2026, increasing by increment each month through Nov 2027
+  function makeStressTestBorrowers(startDefaultCount, increment) {
+    const totalBorrowers = 2000;
+    const allBorrowers = [];
+    let borrowerNum = 1;
+    let defaultCount = startDefaultCount;
+
+    // Monthly stop dates on the 8th from Feb 2026 to Nov 2027
+    const stopDates = [];
+    for (let year = 2026; year <= 2027; year++) {
+      const startMonth = year === 2026 ? 2 : 1;
+      const endMonth = year === 2027 ? 11 : 12;
+      for (let month = startMonth; month <= endMonth; month++) {
+        stopDates.push(`${year}-${String(month).padStart(2, "0")}-08`);
+      }
+    }
+
+    for (const stopDate of stopDates) {
+      const remaining = totalBorrowers - borrowerNum + 1;
+      if (remaining <= 0) break;
+      const count = Math.min(defaultCount, remaining);
+      allBorrowers.push(...makeBorrowers(borrowerNum, borrowerNum + count - 1, "2026-01-08", stopDate));
+      borrowerNum += count;
+      defaultCount += increment;
+    }
+
+    // Remaining healthy borrowers
+    if (borrowerNum <= totalBorrowers) {
+      allBorrowers.push(...makeBorrowers(borrowerNum, totalBorrowers, "2026-01-08"));
+    }
+
+    return allBorrowers;
+  }
+
+  // Happy Path 1
+  tabs["1"] = {
+    name: "Happy Path 1",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+    ],
+    borrowers: makeBorrowers(1, 20, "2026-01-08"),
     results: null,
   };
 
-  // Gamification Scenario 2: Late whale
-  // L-001 100M → 20 borrowers from Jan 8, L-002 1000M → 200 borrowers from Feb 1
-  // Shows NAV "syphoning" — late big investment captures disproportionate profit
+  // Divestment
+  tabs["2"] = {
+    name: "Divestment",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-002", type: "topup", date: "2026-02-01", amount: 100000000 },
+      { id: genId(), lenderId: "L-001", type: "withdraw", date: "2026-07-01", amount: 50000000 },
+      { id: genId(), lenderId: "L-003", type: "topup", date: "2026-07-01", amount: 50000000 },
+    ],
+    borrowers: [
+      ...makeBorrowers(1, 20, "2026-01-08"),
+      ...makeBorrowers(21, 40, "2026-02-08"),
+    ],
+    results: null,
+  };
+
+  // Massive Write Off (6 borrowers default)
+  tabs["3"] = {
+    name: "Massive Write Off",
+    investments: [
+      { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
+    ],
+    borrowers: [
+      ...makeBorrowers(1, 14, "2026-01-08"),
+      ...makeBorrowers(15, 20, "2026-01-08", "2026-01-08"),
+    ],
+    results: null,
+  };
+
+  // NAV vs Avg: Late Whale
   const lateWhaleInvestments = [
     { lenderId: "L-001", date: "2026-01-01", amount: 100000000 },
     { lenderId: "L-002", date: "2026-01-25", amount: 1000000000 },
   ];
-  tabs["7"] = {
+  tabs["4"] = {
     name: "NAV vs Avg: Late Whale",
     investments: lateWhaleInvestments.map((inv) => ({
       id: genId(), type: "topup", ...inv,
@@ -168,21 +154,27 @@ function createDefaultTabs() {
     results: null,
   };
 
-  // Gamification Scenario 3: Mid-month whale
-  // L-001 100M → 20 borrowers from Jan 8, L-002 1000M → 200 borrowers from Jan 15,
-  // L-003 100M → 20 borrowers from Feb 1
-  // Shows that in NAV, L-003 entering late "syphons" the whale's profit
-  const midWhaleInvestments = [
-    { lenderId: "L-001", date: "2026-01-01", amount: 100000000 },
-    { lenderId: "L-002", date: "2026-01-08", amount: 1000000000 },
-    { lenderId: "L-003", date: "2026-01-25", amount: 100000000 },
-  ];
-  tabs["8"] = {
-    name: "NAV vs Avg: Mid Whale",
-    investments: midWhaleInvestments.map((inv) => ({
-      id: genId(), type: "topup", ...inv,
-    })),
-    borrowers: makeBorrowersForLenders(midWhaleInvestments),
+  // Stress Test 1: 1.4% default rate, +0.1%/month (28 borrowers, +2/month)
+  tabs["5"] = {
+    name: "Stress Test 1",
+    investments: makeStressTestInvestments(),
+    borrowers: makeStressTestBorrowers(28, 2),
+    results: null,
+  };
+
+  // Stress Test 2: 2.8% default rate, +0.1%/month (56 borrowers, +2/month)
+  tabs["6"] = {
+    name: "Stress Test 2",
+    investments: makeStressTestInvestments(),
+    borrowers: makeStressTestBorrowers(56, 2),
+    results: null,
+  };
+
+  // Stress Test 3: 5.6% default rate, +0.1%/month (112 borrowers, +2/month)
+  tabs["7"] = {
+    name: "Stress Test 3",
+    investments: makeStressTestInvestments(),
+    borrowers: makeStressTestBorrowers(112, 2),
     results: null,
   };
 
@@ -195,7 +187,7 @@ const useSimulationStore = create(
       // Tab management
       tabs: createDefaultTabs(),
       activeTabId: "1",
-      tabCounter: 8,
+      tabCounter: 7,
 
       // NAV mode: 2 = Margin Rebidding NAV (Option 1), 1 = Margin Pool NAV (Option 2)
       navMode: 2,
