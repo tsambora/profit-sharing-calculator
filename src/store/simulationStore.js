@@ -104,7 +104,7 @@ function createDefaultTabs() {
 
   // Happy Path 1
   tabs["1"] = {
-    name: "Happy Path 1",
+    name: "Happy Path",
     investments: [
       { id: genId(), lenderId: "L-001", type: "topup", date: "2026-01-01", amount: 100000000 },
     ],
