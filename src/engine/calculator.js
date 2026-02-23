@@ -40,24 +40,46 @@ function isWeekday(date) {
   return day !== 0 && day !== 6;
 }
 
-// Build map of repayment dates for each borrower
-function buildRepaymentSchedule(borrowers, startDate, endDate) {
-  const schedule = {};
+// Build date-indexed repayment map: { dateStr: [borrower, ...] }
+// Only dates with actual repayments are keyed, so the main loop
+// can skip days/borrowers with no activity.
+function buildRepaymentByDate(borrowers, startDate, endDate, borrowerStopDate) {
+  const byDate = {};
+  const endTime = endDate.getTime();
   for (const b of borrowers) {
-    schedule[b.id] = [];
     const borrowerStart = new Date(b.startDate || startDate);
-    const repaymentDay = borrowerStart.getDay();
-    let current = new Date(borrowerStart);
-    while (current <= endDate) {
-      if (b.schedule === "daily" && isWeekday(current)) {
-        schedule[b.id].push(formatDate(current));
-      } else if (b.schedule === "weekly" && current.getDay() === repaymentDay) {
-        schedule[b.id].push(formatDate(current));
+    const stopDate = borrowerStopDate[b.borrowerId];
+    const loanAmount = b.loanAmount || 5000000;
+    const maxRepaymentTotal = loanAmount * 1.33;
+
+    if (b.schedule === "weekly") {
+      const repaymentDay = borrowerStart.getDay();
+      // Advance to first matching weekday
+      let current = new Date(borrowerStart);
+      while (current.getDay() !== repaymentDay) {
+        current = addDays(current, 1);
       }
-      current = addDays(current, 1);
+      while (current.getTime() <= endTime) {
+        const dateStr = formatDate(current);
+        if (stopDate && dateStr >= stopDate) break;
+        if (!byDate[dateStr]) byDate[dateStr] = [];
+        byDate[dateStr].push({ borrower: b, loanAmount, maxRepaymentTotal });
+        current = addDays(current, 7); // skip 7 days instead of 1
+      }
+    } else if (b.schedule === "daily") {
+      let current = new Date(borrowerStart);
+      while (current.getTime() <= endTime) {
+        if (isWeekday(current)) {
+          const dateStr = formatDate(current);
+          if (stopDate && dateStr >= stopDate) break;
+          if (!byDate[dateStr]) byDate[dateStr] = [];
+          byDate[dateStr].push({ borrower: b, loanAmount, maxRepaymentTotal });
+        }
+        current = addDays(current, 1);
+      }
     }
   }
-  return schedule;
+  return byDate;
 }
 
 // Main simulation function
@@ -68,9 +90,6 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
 
   const startDate = new Date(Math.min(...investmentDates));
   const endDate = addDays(startDate, tenorMonths * 30);
-
-  // Build repayment schedule
-  const repaymentSchedule = buildRepaymentSchedule(borrowers, startDate, endDate);
 
   // Derive write-offs from borrowers that have a repaymentStopDate
   const writeOffsByDate = {};
@@ -95,6 +114,9 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
       outstandingAmount,
     });
   }
+
+  // Build date-indexed repayment schedule (after borrowerStopDate is populated)
+  const repaymentByDate = buildRepaymentByDate(borrowers, startDate, endDate, borrowerStopDate);
 
   // Index investments by date
   const investmentsByDate = {};
@@ -286,20 +308,15 @@ export function runSimulation(investments, borrowers, tenorMonths = 12, navMode 
       }
     }
 
-    // 2. Process borrower repayments for today
+    // 2. Process borrower repayments for today (date-indexed lookup)
     let todayRepaymentTotal = 0;
-    for (const b of borrowers) {
-      // Skip borrowers past their repayment stop date
-      if (borrowerStopDate[b.borrowerId] && dateStr >= borrowerStopDate[b.borrowerId]) continue;
+    const todayBorrowers = repaymentByDate[dateStr];
+    if (todayBorrowers) {
+      for (const { borrower: b, maxRepaymentTotal } of todayBorrowers) {
+        // Skip borrowers that have reached 133% loan completion
+        const cumulative = borrowerCumulativeRepaid[b.borrowerId] || 0;
+        if (cumulative >= maxRepaymentTotal) continue;
 
-      // Skip borrowers that have reached 133% loan completion
-      const loanAmount = b.loanAmount || 5000000;
-      const maxRepaymentTotal = loanAmount * 1.33;
-      const cumulative = borrowerCumulativeRepaid[b.borrowerId] || 0;
-      if (cumulative >= maxRepaymentTotal) continue;
-
-      const schedule = repaymentSchedule[b.id] || [];
-      if (schedule.includes(dateStr)) {
         const dist = distributeRepayment(b.amount);
         const actual = processRepaymentDistribution(dist);
 

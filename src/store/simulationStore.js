@@ -2,6 +2,20 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { runSimulation } from "@/engine/calculator";
 
+// Custom storage that silently handles QuotaExceededError
+// (stress test tabs with thousands of borrowers can exceed the ~5MB localStorage limit)
+const safeStorage = {
+  getItem: (name) => localStorage.getItem(name),
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value);
+    } catch (e) {
+      // QuotaExceededError — silently skip persistence
+    }
+  },
+  removeItem: (name) => localStorage.removeItem(name),
+};
+
 let nextId = 1;
 function genId() {
   return String(nextId++);
@@ -52,54 +66,72 @@ function createDefaultTabs() {
     return allBorrowers;
   }
 
-  // Helper: 10 lenders each investing 1B IDR on Jan 1 2026
-  function makeStressTestInvestments() {
+  // Helper: rolling monthly stress test with configurable parameters
+  // investmentAmount: IDR per lender, borrowersPerLender: count, rateMultiplier: scales default rates
+  function makeRollingStressTestData(investmentAmount, borrowersPerLender, rateMultiplier) {
     const investments = [];
-    for (let i = 1; i <= 10; i++) {
-      investments.push({
-        id: genId(),
-        lenderId: `L-${String(i).padStart(3, "0")}`,
-        type: "topup",
-        date: "2026-01-01",
-        amount: 1000000000,
-      });
-    }
-    return investments;
-  }
-
-  // Helper: 2000 borrowers with monthly waves of defaults
-  // startDefaultCount borrowers stop in Feb 2026, increasing by increment each month through Nov 2027
-  function makeStressTestBorrowers(startDefaultCount, increment) {
-    const totalBorrowers = 2000;
     const allBorrowers = [];
     let borrowerNum = 1;
-    let defaultCount = startDefaultCount;
 
-    // Monthly stop dates on the 8th from Feb 2026 to Nov 2027
-    const stopDates = [];
-    for (let year = 2026; year <= 2027; year++) {
-      const startMonth = year === 2026 ? 2 : 1;
-      const endMonth = year === 2027 ? 11 : 12;
-      for (let month = startMonth; month <= endMonth; month++) {
-        stopDates.push(`${year}-${String(month).padStart(2, "0")}-08`);
+    // Base default rates by months since investment
+    const baseRates = [
+      { monthOffset: 2, rate: 0.0136 },  // 1.36%
+      { monthOffset: 3, rate: 0.0145 },  // 1.45%
+      { monthOffset: 4, rate: 0.0153 },  // 1.53%
+      { monthOffset: 5, rate: 0.0162 },  // 1.62%
+      { monthOffset: 6, rate: 0.0171 },  // 1.71%
+      { monthOffset: 7, rate: 0.0197 },  // 1.97%
+      { monthOffset: 8, rate: 0.0320 },  // 3.20%
+    ];
+
+    // 36 monthly investments: Jan 2026 to Dec 2028
+    for (let i = 0; i < 36; i++) {
+      const year = 2026 + Math.floor(i / 12);
+      const month = (i % 12) + 1;
+      const dateStr = `${year}-${String(month).padStart(2, "0")}-01`;
+      const lenderNum = i + 1;
+
+      investments.push({
+        id: genId(),
+        lenderId: `L-${String(lenderNum).padStart(3, "0")}`,
+        type: "topup",
+        date: dateStr,
+        amount: investmentAmount,
+      });
+
+      // Repayment start: 1 week after investment
+      const investDate = new Date(dateStr);
+      const repayStart = new Date(investDate);
+      repayStart.setDate(repayStart.getDate() + 7);
+      const repayStartStr = repayStart.toISOString().split("T")[0];
+
+      // Create defaulting borrowers for this cohort
+      let cohortDefaulted = 0;
+      for (const { monthOffset, rate } of baseRates) {
+        const count = Math.round(borrowersPerLender * rate * rateMultiplier);
+        if (count === 0) continue;
+        const stopDate = new Date(investDate);
+        stopDate.setMonth(stopDate.getMonth() + monthOffset);
+        const stopDateStr = stopDate.toISOString().split("T")[0];
+
+        allBorrowers.push(
+          ...makeBorrowers(borrowerNum, borrowerNum + count - 1, repayStartStr, stopDateStr)
+        );
+        borrowerNum += count;
+        cohortDefaulted += count;
+      }
+
+      // Remaining healthy borrowers (no default)
+      const healthyCount = borrowersPerLender - cohortDefaulted;
+      if (healthyCount > 0) {
+        allBorrowers.push(
+          ...makeBorrowers(borrowerNum, borrowerNum + healthyCount - 1, repayStartStr)
+        );
+        borrowerNum += healthyCount;
       }
     }
 
-    for (const stopDate of stopDates) {
-      const remaining = totalBorrowers - borrowerNum + 1;
-      if (remaining <= 0) break;
-      const count = Math.min(defaultCount, remaining);
-      allBorrowers.push(...makeBorrowers(borrowerNum, borrowerNum + count - 1, "2026-01-08", stopDate));
-      borrowerNum += count;
-      defaultCount += increment;
-    }
-
-    // Remaining healthy borrowers
-    if (borrowerNum <= totalBorrowers) {
-      allBorrowers.push(...makeBorrowers(borrowerNum, totalBorrowers, "2026-01-08"));
-    }
-
-    return allBorrowers;
+    return { investments, borrowers: allBorrowers };
   }
 
   // Happy Path 1
@@ -159,38 +191,46 @@ function createDefaultTabs() {
     tenor: 12,
   };
 
-  // Stress Test 1: 1.4% default rate, +0.1%/month (28 borrowers, +2/month)
+  // Stress Test 1: 36 monthly 1B investments (Jan 2026–Dec 2028), 200 borrowers each,
+  // cohort-based defaults at months 2–8 (1.36%–3.20%)
+  const st1 = makeRollingStressTestData(1000000000, 200, 1);
   tabs["5"] = {
     name: "Stress Test 1",
-    investments: makeStressTestInvestments(),
-    borrowers: makeStressTestBorrowers(28, 2),
+    investments: st1.investments,
+    borrowers: st1.borrowers,
     results: null,
     tenor: 36,
   };
 
-  // Stress Test 2: 2.8% default rate, +0.1%/month (56 borrowers, +2/month)
+  // Stress Test 2: 36 monthly 2B investments (Jan 2026–Dec 2028), 400 borrowers each,
+  // 2x default rates (2.72%–6.40%)
+  const st2 = makeRollingStressTestData(2000000000, 400, 2);
   tabs["6"] = {
     name: "Stress Test 2",
-    investments: makeStressTestInvestments(),
-    borrowers: makeStressTestBorrowers(56, 2),
+    investments: st2.investments,
+    borrowers: st2.borrowers,
     results: null,
     tenor: 36,
   };
 
-  // Stress Test 3: 5.6% default rate, +0.1%/month (112 borrowers, +2/month)
+  // Stress Test 3: 36 monthly 4B investments (Jan 2026–Dec 2028), 800 borrowers each,
+  // 4x default rates (5.44%–12.80%)
+  const st3 = makeRollingStressTestData(4000000000, 800, 4);
   tabs["7"] = {
     name: "Stress Test 3",
-    investments: makeStressTestInvestments(),
-    borrowers: makeStressTestBorrowers(112, 2),
+    investments: st3.investments,
+    borrowers: st3.borrowers,
     results: null,
     tenor: 36,
   };
 
-  // Stress Test 4: 10.2% default rate, +0.1%/month (204 borrowers, +2/month)
+  // Stress Test 4: 36 monthly 8B investments (Jan 2026–Dec 2028), 1600 borrowers each,
+  // 8x default rates (10.88%–25.60%)
+  const st4 = makeRollingStressTestData(8000000000, 1600, 8);
   tabs["8"] = {
     name: "Stress Test 4",
-    investments: makeStressTestInvestments(),
-    borrowers: makeStressTestBorrowers(204, 2),
+    investments: st4.investments,
+    borrowers: st4.borrowers,
     results: null,
     tenor: 36,
   };
@@ -403,6 +443,7 @@ const useSimulationStore = create(
     }),
     {
       name: "simulation-store",
+      storage: safeStorage,
       partialize: (state) => ({
         tabs: Object.fromEntries(
           Object.entries(state.tabs).map(([id, tab]) => [

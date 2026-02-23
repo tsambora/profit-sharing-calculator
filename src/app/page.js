@@ -10,6 +10,7 @@ import Dashboard from "@/components/Dashboard";
 export default function Home() {
   const [tutorialOpen, setTutorialOpen] = useState(true);
   const [guideOpen, setGuideOpen] = useState(true);
+  const [stressTestOpen, setStressTestOpen] = useState(false);
   const [tablesOpen, setTablesOpen] = useState(true);
   const { navMode, marginRebiddingPct, setNavMode, setMarginRebiddingPct, getCurrentTab, setTenor } = useSimulationStore();
   const currentTenor = getCurrentTab().tenor || 12;
@@ -157,6 +158,85 @@ export default function Home() {
                 <li><strong>Rebidding is paused</strong> — no new rebidding loans are created while the deficit exists, since principal is being funneled to recovery.{navMode === 2 && <> This applies to both principal rebidding and margin rebidding.</>}</li>
                 <li><strong>Immediate resume</strong> — as soon as the deficit is fully recovered (reaches 0), normal distribution resumes. If the deficit clears mid-repayment, the remainder is proportionally distributed to pools.</li>
               </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+        <button
+          onClick={() => setStressTestOpen(!stressTestOpen)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <h3 className="font-semibold text-amber-900">Stress Test Scenarios</h3>
+          <span className="text-amber-600 text-sm">{stressTestOpen ? "▲" : "▼"}</span>
+        </button>
+        {stressTestOpen && (
+          <div className="mt-3 space-y-3 text-sm text-amber-900">
+            <div>
+              All stress tests simulate <strong>36 monthly investment cohorts</strong> (Jan 2026 &ndash; Dec 2028). Each month, a new lender invests and their borrowers begin repaying one week later. Defaults occur at months 2&ndash;8 after each cohort&apos;s start, following a rising curve from 1.36% to 3.20% (base rates), scaled by a multiplier per scenario.
+            </div>
+
+            <div>
+              <span className="font-bold">Default Timeline (Base Rates)</span>
+              <div className="mt-1 grid grid-cols-7 gap-1 text-xs">
+                {[
+                  { month: "Month 2", rate: "1.36%" },
+                  { month: "Month 3", rate: "1.45%" },
+                  { month: "Month 4", rate: "1.53%" },
+                  { month: "Month 5", rate: "1.62%" },
+                  { month: "Month 6", rate: "1.71%" },
+                  { month: "Month 7", rate: "1.97%" },
+                  { month: "Month 8", rate: "3.20%" },
+                ].map(({ month, rate }) => (
+                  <div key={month} className="bg-amber-100 rounded px-2 py-1 text-center">
+                    <div className="font-medium">{month}</div>
+                    <div>{rate}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 text-xs text-amber-700">Total base default rate per cohort: ~12.8%. Multiplied by each scenario&apos;s rate multiplier.</div>
+            </div>
+
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-amber-100">
+                  <th className="text-left py-1.5 px-2 border border-amber-200">Scenario</th>
+                  <th className="text-right py-1.5 px-2 border border-amber-200">Investment / Lender</th>
+                  <th className="text-right py-1.5 px-2 border border-amber-200">Borrowers / Cohort</th>
+                  <th className="text-right py-1.5 px-2 border border-amber-200">Rate Multiplier</th>
+                  <th className="text-right py-1.5 px-2 border border-amber-200">Default Rate</th>
+                  <th className="text-right py-1.5 px-2 border border-amber-200">Total Borrowers</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { name: "Stress Test 1", inv: "1B", bpc: "200", mult: "1x", rate: "~12.8%", total: "~7,200" },
+                  { name: "Stress Test 2", inv: "2B", bpc: "400", mult: "2x", rate: "~25.7%", total: "~14,400" },
+                  { name: "Stress Test 3", inv: "4B", bpc: "800", mult: "4x", rate: "~51.4%", total: "~28,800" },
+                  { name: "Stress Test 4", inv: "8B", bpc: "1,600", mult: "8x", rate: "~100%", total: "~57,600" },
+                ].map(({ name, inv, bpc, mult, rate, total }) => (
+                  <tr key={name} className="border border-amber-200">
+                    <td className="py-1.5 px-2 font-medium">{name}</td>
+                    <td className="py-1.5 px-2 text-right">{inv} IDR</td>
+                    <td className="py-1.5 px-2 text-right">{bpc}</td>
+                    <td className="py-1.5 px-2 text-right">{mult}</td>
+                    <td className="py-1.5 px-2 text-right">{rate}</td>
+                    <td className="py-1.5 px-2 text-right">{total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="space-y-1.5">
+              <div><strong>Stress Test 1</strong> &mdash; Baseline scenario. Moderate defaults (~12.8%) with 200 borrowers per cohort. Tests how the fund handles normal default patterns across rolling monthly investments.</div>
+              <div><strong>Stress Test 2</strong> &mdash; Double exposure. Twice the investment, borrowers, and default rates. Tests whether the write-off absorption waterfall and AUM recovery mechanism can keep pace with elevated defaults.</div>
+              <div><strong>Stress Test 3</strong> &mdash; Severe stress. Over half the borrowers in each cohort default. Tests the fund under extreme conditions where provision, platform margin, and principal pools are heavily consumed by write-offs.</div>
+              <div><strong>Stress Test 4</strong> &mdash; Catastrophic scenario. Default rates exceed 100% of base borrowers per cohort, meaning virtually all borrowers default at some point. Tests the absolute worst case to see how deeply AUM is impacted and how long recovery takes.</div>
+            </div>
+
+            <div className="text-xs text-amber-700 mt-2">
+              <strong>Note:</strong> Larger stress tests (ST3, ST4) may take a few seconds to generate graphs due to the high borrower count. The simulation engine uses date-indexed lookups to handle this efficiently.
             </div>
           </div>
         )}

@@ -20,6 +20,8 @@ export default function BorrowerRepaymentTable() {
     count: "",
   });
   const [editingId, setEditingId] = useState(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 100;
 
   const handleAdd = () => {
     const count = Number(form.count) || 1;
@@ -203,65 +205,97 @@ export default function BorrowerRepaymentTable() {
         </div>
       </div>
 
-      {borrowers.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left py-2 px-2">Borrower ID</th>
-                <th className="text-left py-2 px-2">Schedule</th>
-                <th className="text-left py-2 px-2">Start Date</th>
-                <th className="text-left py-2 px-2">Stop Date</th>
-                <th className="text-left py-2 px-2">Write-Off Date</th>
-                <th className="text-right py-2 px-2">Outstanding</th>
-                <th className="text-right py-2 px-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {borrowers.map((b) => {
-                const woDate = b.repaymentStopDate ? computeWriteOffDate(b.repaymentStopDate) : null;
-                const outstanding = b.repaymentStopDate
-                  ? computeWriteOffOutstanding(b.startDate, b.schedule, b.repaymentStopDate, FIXED_REPAYMENT, FIXED_LOAN_AMOUNT)
-                  : null;
-                return (
-                  <tr key={b.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 px-2">{b.borrowerId}</td>
-                    <td className="py-2 px-2">
-                      <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
-                        {b.schedule}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2">{b.startDate}</td>
-                    <td className="py-2 px-2 text-gray-500">
-                      {b.repaymentStopDate || "—"}
-                    </td>
-                    <td className="py-2 px-2 text-gray-500">
-                      {woDate || "—"}
-                    </td>
-                    <td className="py-2 px-2 text-right text-gray-500">
-                      {outstanding !== null ? outstanding.toLocaleString() : "—"}
-                    </td>
-                    <td className="py-2 px-2 text-right">
-                      <button
-                        onClick={() => startEdit(b)}
-                        className="text-blue-600 hover:text-blue-800 mr-2 text-xs"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => removeBorrower(b.id)}
-                        className="text-red-600 hover:text-red-800 text-xs"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {borrowers.length > 0 && (() => {
+        const totalPages = Math.ceil(borrowers.length / PAGE_SIZE);
+        const safePage = Math.min(page, totalPages - 1);
+        const startIdx = safePage * PAGE_SIZE;
+        const pageRows = borrowers.slice(startIdx, startIdx + PAGE_SIZE);
+        return (
+          <div className="overflow-x-auto">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500">
+                Showing {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, borrowers.length)} of {borrowers.length.toLocaleString()} borrowers
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(Math.max(0, safePage - 1))}
+                    disabled={safePage === 0}
+                    className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-gray-100"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-xs text-gray-600">
+                    Page {safePage + 1} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(Math.min(totalPages - 1, safePage + 1))}
+                    disabled={safePage >= totalPages - 1}
+                    className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-gray-100"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-2 px-2">Borrower ID</th>
+                  <th className="text-left py-2 px-2">Schedule</th>
+                  <th className="text-left py-2 px-2">Start Date</th>
+                  <th className="text-left py-2 px-2">Stop Date</th>
+                  <th className="text-left py-2 px-2">Write-Off Date</th>
+                  <th className="text-right py-2 px-2">Outstanding</th>
+                  <th className="text-right py-2 px-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((b) => {
+                  const woDate = b.repaymentStopDate ? computeWriteOffDate(b.repaymentStopDate) : null;
+                  const outstanding = b.repaymentStopDate
+                    ? computeWriteOffOutstanding(b.startDate, b.schedule, b.repaymentStopDate, FIXED_REPAYMENT, FIXED_LOAN_AMOUNT)
+                    : null;
+                  return (
+                    <tr key={b.id} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-2">{b.borrowerId}</td>
+                      <td className="py-2 px-2">
+                        <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+                          {b.schedule}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2">{b.startDate}</td>
+                      <td className="py-2 px-2 text-gray-500">
+                        {b.repaymentStopDate || "—"}
+                      </td>
+                      <td className="py-2 px-2 text-gray-500">
+                        {woDate || "—"}
+                      </td>
+                      <td className="py-2 px-2 text-right text-gray-500">
+                        {outstanding !== null ? outstanding.toLocaleString() : "—"}
+                      </td>
+                      <td className="py-2 px-2 text-right">
+                        <button
+                          onClick={() => startEdit(b)}
+                          className="text-blue-600 hover:text-blue-800 mr-2 text-xs"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => removeBorrower(b.id)}
+                          className="text-red-600 hover:text-red-800 text-xs"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
 
       {borrowers.length === 0 && (
         <p className="text-gray-400 text-sm text-center py-4">
