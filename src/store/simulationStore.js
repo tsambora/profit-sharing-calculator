@@ -361,7 +361,7 @@ const useSimulationStore = create(
       runSimulation: () => {
         const state = get();
         const tab = state.tabs[state.activeTabId];
-        const results = runSimulation(tab.investments, tab.borrowers, 12, state.navMode, state.marginRebiddingPct);
+        const results = runSimulation(tab.investments, tab.borrowers, 24, state.navMode, state.marginRebiddingPct);
         set({
           tabs: {
             ...state.tabs,
