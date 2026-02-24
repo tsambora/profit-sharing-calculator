@@ -235,6 +235,17 @@ function createDefaultTabs() {
     tenor: 36,
   };
 
+  // Stress Test 5: 36 monthly 1B investments (Jan 2026–Dec 2028), 200 borrowers each,
+  // 8x default rates (10.88%–25.60%)
+  const st5 = makeRollingStressTestData(1000000000, 200, 8);
+  tabs["9"] = {
+    name: "Stress Test 5",
+    investments: st5.investments,
+    borrowers: st5.borrowers,
+    results: null,
+    tenor: 36,
+  };
+
   return tabs;
 }
 
@@ -244,7 +255,7 @@ const useSimulationStore = create(
       // Tab management
       tabs: createDefaultTabs(),
       activeTabId: "1",
-      tabCounter: 8,
+      tabCounter: 9,
 
       // NAV mode: 2 = Margin Rebidding NAV (Option 1), 1 = Margin Pool NAV (Option 2)
       navMode: 2,
