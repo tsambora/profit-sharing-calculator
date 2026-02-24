@@ -535,6 +535,241 @@ export default function DiagramsPage() {
         </div>
       </section>
 
+      {/* ─── Section 6: Lender Payout Calculation ─── */}
+      <section className="bg-teal-50 border border-teal-200 rounded-lg p-5 mb-6">
+        <h2 className="text-lg font-bold text-teal-900 mb-3">6. Lender Payout Calculation</h2>
+        <p className="text-sm text-teal-800 mb-4">
+          Payouts are distributed <strong>proportionally by units held</strong>. Units are issued at investment time
+          based on the current NAV — so timing matters.
+        </p>
+
+        {/* Unit Allocation */}
+        <div className="bg-white border border-teal-200 rounded-lg p-4 mb-4">
+          <div className="text-xs font-semibold text-teal-700 mb-3">Step 1: Unit Allocation (at investment time)</div>
+          <div className="flex flex-col items-center gap-1 mb-4">
+            <div className="bg-teal-100 border-2 border-teal-400 rounded-lg px-4 py-2 text-sm font-semibold text-teal-900">
+              Lender Invests Amount
+            </div>
+            <ArrowDown color="teal" />
+            <div className="bg-teal-200 border border-teal-400 rounded-lg px-5 py-3 text-center">
+              <div className="text-lg font-bold text-teal-900">Units = Investment &divide; NAV</div>
+              <div className="text-xs text-teal-600 mt-1">Initial NAV = Rp 100,000</div>
+            </div>
+            <ArrowDown color="teal" />
+            <div className="bg-teal-600 text-white rounded-lg px-4 py-2 text-sm font-bold">
+              Units locked — never change after issuance
+            </div>
+          </div>
+
+          {/* Example */}
+          <div className="bg-teal-50 rounded-lg p-3 border border-teal-200">
+            <div className="text-xs font-bold text-teal-800 mb-2">Example: Two lenders, different timing</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="bg-white rounded border border-teal-200 p-3">
+                <div className="font-bold text-teal-800">Lender A — Early entry</div>
+                <div className="mt-1 space-y-0.5 text-teal-700">
+                  <div>Invests: <strong>Rp 10,000,000</strong></div>
+                  <div>NAV at entry: <strong>Rp 100,000</strong></div>
+                  <div>Units received: <strong>10M &divide; 100K = 100 units</strong></div>
+                </div>
+              </div>
+              <div className="bg-white rounded border border-teal-200 p-3">
+                <div className="font-bold text-teal-800">Lender B — Later entry</div>
+                <div className="mt-1 space-y-0.5 text-teal-700">
+                  <div>Invests: <strong>Rp 10,000,000</strong></div>
+                  <div>NAV at entry: <strong>Rp 105,000</strong> (NAV grew)</div>
+                  <div>Units received: <strong>10M &divide; 105K &asymp; 95.2 units</strong></div>
+                </div>
+              </div>
+            </div>
+            <div className="text-[10px] text-teal-600 mt-2">
+              Same investment amount, but Lender B gets fewer units because NAV is higher — they&apos;re buying into a fund that has already grown.
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Payout Distribution */}
+        <div className="bg-white border border-teal-200 rounded-lg p-4 mb-4">
+          <div className="text-xs font-semibold text-teal-700 mb-3">Step 2: Monthly Payout Distribution</div>
+          <div className="flex flex-col items-center gap-1 mb-4">
+            <div className="bg-blue-100 border border-blue-400 rounded-lg px-4 py-2 text-sm font-medium text-blue-800">
+              Lender Margin accumulates all month (Rp 15,000 per repayment)
+            </div>
+            <ArrowDown color="teal" />
+            <div className="bg-teal-200 border border-teal-400 rounded-lg px-5 py-3 text-center">
+              <div className="text-lg font-bold text-teal-900">Payout = (My Units &divide; Total Units) &times; Margin Pool</div>
+            </div>
+            <ArrowDown color="teal" />
+            <div className="flex gap-3 items-start">
+              <div className="flex flex-col items-center gap-1">
+                <div className="bg-teal-100 border border-teal-300 rounded px-3 py-1.5 text-xs font-medium text-teal-800">
+                  Lender A: 100 units
+                </div>
+                <div className="text-[10px] text-teal-600">100 / 195.2 = <strong>51.2%</strong></div>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="bg-teal-100 border border-teal-300 rounded px-3 py-1.5 text-xs font-medium text-teal-800">
+                  Lender B: 95.2 units
+                </div>
+                <div className="text-[10px] text-teal-600">95.2 / 195.2 = <strong>48.8%</strong></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Worked example */}
+          <div className="bg-teal-50 rounded-lg p-3 border border-teal-200">
+            <div className="text-xs font-bold text-teal-800 mb-2">Worked Example: Month-end payout</div>
+            <div className="text-xs text-teal-700 space-y-1">
+              <div>Total margin accumulated this month: <strong>Rp 750,000</strong></div>
+              <div>Total units outstanding: <strong>195.2</strong></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 text-xs">
+              <div className="bg-white rounded border border-teal-200 p-2">
+                <div className="font-bold text-teal-800">Lender A</div>
+                <div className="text-teal-700">(100 &divide; 195.2) &times; 750K = <strong>Rp 384,016</strong></div>
+              </div>
+              <div className="bg-white rounded border border-teal-200 p-2">
+                <div className="font-bold text-teal-800">Lender B</div>
+                <div className="text-teal-700">(95.2 &divide; 195.2) &times; 750K = <strong>Rp 365,984</strong></div>
+              </div>
+            </div>
+            <div className="text-[10px] text-teal-600 mt-2">
+              Both get a proportional share. Lender A gets more because they hold more units (entered at a lower NAV).
+            </div>
+          </div>
+        </div>
+
+        {/* Full flow SVG */}
+        <div className="bg-white border border-teal-200 rounded-lg p-4 mb-4">
+          <div className="text-xs font-semibold text-teal-700 mb-2">Complete Payout Flow</div>
+          <svg viewBox="0 0 700 200" className="w-full h-auto" role="img" aria-label="Lender payout flow diagram">
+            <defs>
+              <marker id="arrowTeal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6" fill="#0d9488" />
+              </marker>
+              <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6" fill="#2563eb" />
+              </marker>
+            </defs>
+
+            {/* Investment */}
+            <rect x="5" y="10" width="110" height="40" rx="6" fill="#ccfbf1" stroke="#0d9488" strokeWidth="1.5" />
+            <text x="60" y="27" fontSize="10" fill="#134e4a" textAnchor="middle" fontWeight="bold">Investment</text>
+            <text x="60" y="40" fontSize="8" fill="#134e4a" textAnchor="middle">e.g. Rp 10M</text>
+
+            {/* Arrow */}
+            <line x1="115" y1="30" x2="145" y2="30" stroke="#0d9488" strokeWidth="1.5" markerEnd="url(#arrowTeal)" />
+
+            {/* NAV */}
+            <rect x="145" y="10" width="90" height="40" rx="6" fill="#f0fdfa" stroke="#0d9488" strokeWidth="1" />
+            <text x="190" y="27" fontSize="10" fill="#134e4a" textAnchor="middle" fontWeight="bold">&divide; NAV</text>
+            <text x="190" y="40" fontSize="8" fill="#134e4a" textAnchor="middle">e.g. Rp 100K</text>
+
+            {/* Arrow */}
+            <line x1="235" y1="30" x2="265" y2="30" stroke="#0d9488" strokeWidth="1.5" markerEnd="url(#arrowTeal)" />
+
+            {/* Units */}
+            <rect x="265" y="10" width="100" height="40" rx="6" fill="#0d9488" stroke="#134e4a" strokeWidth="1" />
+            <text x="315" y="27" fontSize="10" fill="white" textAnchor="middle" fontWeight="bold">100 Units</text>
+            <text x="315" y="40" fontSize="8" fill="#ccfbf1" textAnchor="middle">issued to lender</text>
+
+            {/* Repayments flowing into margin pool */}
+            <rect x="5" y="80" width="130" height="40" rx="6" fill="#dbeafe" stroke="#2563eb" strokeWidth="1.5" />
+            <text x="70" y="97" fontSize="10" fill="#1e40af" textAnchor="middle" fontWeight="bold">Weekly Repayments</text>
+            <text x="70" y="110" fontSize="8" fill="#1e40af" textAnchor="middle">Rp 15K margin each</text>
+
+            <line x1="135" y1="100" x2="165" y2="100" stroke="#2563eb" strokeWidth="1.5" markerEnd="url(#arrowBlue)" />
+
+            <rect x="165" y="80" width="140" height="40" rx="6" fill="#bfdbfe" stroke="#2563eb" strokeWidth="1.5" />
+            <text x="235" y="97" fontSize="10" fill="#1e40af" textAnchor="middle" fontWeight="bold">Margin Pool</text>
+            <text x="235" y="110" fontSize="8" fill="#1e40af" textAnchor="middle">accumulates all month</text>
+
+            {/* Month end trigger */}
+            <line x1="305" y1="100" x2="335" y2="100" stroke="#2563eb" strokeWidth="1.5" markerEnd="url(#arrowBlue)" />
+
+            <rect x="335" y="75" width="100" height="50" rx="6" fill="#2563eb" stroke="#1e40af" strokeWidth="1" />
+            <text x="385" y="95" fontSize="9" fill="white" textAnchor="middle" fontWeight="bold">Month-End</text>
+            <text x="385" y="108" fontSize="9" fill="white" textAnchor="middle" fontWeight="bold">Payout</text>
+
+            {/* Arrow to formula */}
+            <line x1="435" y1="100" x2="460" y2="100" stroke="#0d9488" strokeWidth="1.5" markerEnd="url(#arrowTeal)" />
+
+            {/* Formula */}
+            <rect x="460" y="70" width="230" height="60" rx="6" fill="#f0fdfa" stroke="#0d9488" strokeWidth="1.5" />
+            <text x="575" y="92" fontSize="10" fill="#134e4a" textAnchor="middle" fontWeight="bold">Lender Payout =</text>
+            <text x="575" y="108" fontSize="11" fill="#0d9488" textAnchor="middle" fontWeight="bold">(Units / Total Units) &times; Pool</text>
+            <text x="575" y="122" fontSize="8" fill="#134e4a" textAnchor="middle">(100 / 195.2) &times; 750K = 384,016</text>
+
+            {/* NAV impact section */}
+            <rect x="5" y="150" width="690" height="40" rx="6" fill="#fefce8" stroke="#ca8a04" strokeWidth="1" />
+            <text x="350" y="167" fontSize="10" fill="#854d0e" textAnchor="middle" fontWeight="bold">
+              NAV Impact: After payout, margin pool resets to 0 &rarr; NAV drops back to AUM / Units (sawtooth in Option 2)
+            </text>
+            <text x="350" y="182" fontSize="9" fill="#a16207" textAnchor="middle">
+              In Option 1: only the payout % of margin is distributed — the rebidding % stays in AUM, keeping NAV smooth
+            </text>
+          </svg>
+        </div>
+
+        {/* NAV and Payout relationship */}
+        <div className="bg-white border border-teal-200 rounded-lg p-4">
+          <div className="text-xs font-semibold text-teal-700 mb-3">How NAV Affects Returns</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="border border-teal-200 rounded-lg p-3 bg-teal-50">
+              <div className="text-xs font-bold text-teal-800 mb-1">Early Investor (Low NAV)</div>
+              <ul className="text-[11px] text-teal-700 space-y-1">
+                <li className="flex items-start gap-1">
+                  <span className="text-teal-400 mt-0.5">&#9679;</span>
+                  <span>Buys at NAV = 100K</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-teal-400 mt-0.5">&#9679;</span>
+                  <span><strong>More units</strong> per IDR invested</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-teal-400 mt-0.5">&#9679;</span>
+                  <span>Larger share of every future payout</span>
+                </li>
+              </ul>
+            </div>
+            <div className="border border-amber-200 rounded-lg p-3 bg-amber-50">
+              <div className="text-xs font-bold text-amber-800 mb-1">Late Investor (High NAV)</div>
+              <ul className="text-[11px] text-amber-700 space-y-1">
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-400 mt-0.5">&#9679;</span>
+                  <span>Buys at NAV = 110K</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-400 mt-0.5">&#9679;</span>
+                  <span><strong>Fewer units</strong> per IDR invested</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-400 mt-0.5">&#9679;</span>
+                  <span>Smaller share — but buying into a larger, proven fund</span>
+                </li>
+              </ul>
+            </div>
+            <div className="border border-purple-200 rounded-lg p-3 bg-purple-50">
+              <div className="text-xs font-bold text-purple-800 mb-1">Why This Is Fair</div>
+              <ul className="text-[11px] text-purple-700 space-y-1">
+                <li className="flex items-start gap-1">
+                  <span className="text-purple-400 mt-0.5">&#9679;</span>
+                  <span>NAV reflects <strong>real AUM growth</strong> from rebidding</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-purple-400 mt-0.5">&#9679;</span>
+                  <span>Early investors earned the growth — new investors shouldn&apos;t dilute it</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-purple-400 mt-0.5">&#9679;</span>
+                  <span>Each unit always gets the <strong>same payout</strong> regardless of when it was issued</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <div className="text-center text-xs text-gray-400 py-4">
         These diagrams are a static reference. Run the{" "}
@@ -553,6 +788,7 @@ function ArrowDown({ color = "gray", size = "md" }) {
     indigo: "#4f46e5",
     green: "#16a34a",
     blue: "#2563eb",
+    teal: "#0d9488",
     gray: "#9ca3af",
   };
   const c = colors[color] || colors.gray;
